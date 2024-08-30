@@ -6,6 +6,13 @@
 .RData
 .RDataTmp
 
+# mack special added
+.bak
+.csv
+.xlsx
+.pdf
+.rds
+
 # User-specific files
 .Ruserdata
 
