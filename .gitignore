@@ -12,6 +12,7 @@
 .xlsx
 .pdf
 .rds
+.RDS
 
 # User-specific files
 .Ruserdata
