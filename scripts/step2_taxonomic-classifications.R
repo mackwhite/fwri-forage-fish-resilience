@@ -8,7 +8,7 @@
 
 ### load necessary libraries ---
 # install.packages("librarian")
-librarian::shelf(tidyverse, readxl, dplyr, splitstackshape)
+librarian::shelf(tidyverse, readxl, dplyr, splitstackshape, ropensci/taxize, stringr)
 
 dat <- read_rds('local-data/fim-master.RDS')
 glimpse(dat)
