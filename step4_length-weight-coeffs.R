@@ -24,6 +24,11 @@ dat <- read_rds('local-data/fim-master-short.RDS') |>
             str_detect(commonname, regex("shrimp", ignore_case = TRUE)) ~ "shrimps",
             str_detect(commonname, regex("shark", ignore_case = TRUE)) ~ "sharks",
             str_detect(commonname, regex("crab", ignore_case = TRUE)) ~ "crabs",
+            str_detect(commonname, regex("shelligs", ignore_case = TRUE)) ~ "crabs",
+            str_detect(commonname, regex("turtle", ignore_case = TRUE)) ~ "turtles",
+            str_detect(commonname, regex("cooter", ignore_case = TRUE)) ~ "turtles",
+            str_detect(commonname, regex("terrapin", ignore_case = TRUE)) ~ "turtles",
+            str_detect(commonname, regex("ray", ignore_case = TRUE)) ~ "rays",
             TRUE ~ "fishes")) |> 
       select(reference, sampling_date, bay, gear, gear_details, rep, latitude, longitude, zone, 
              subzone, grid, depth, commonname, scientificname, taxon_group, everything()) |> 
@@ -108,13 +113,6 @@ keep <- c("dat5", "nacheck")
 rm(list = setdiff(ls(), keep))
 
 glimpse(dat5)
-
-spp_bm <- dat5 |> 
-      group_by(bay, common_name, scientific_name, gear_details, year, month, zone, subzone, grid) |> 
-      summarize(spp_tot_bm = n*mean_weight_g,
-                spp_areal_bm = spp_tot_bm/area_m2) |> 
-      distinct()
-nacheck(spp_bm)
 
 comm_bm <- dat5 |> 
       group_by(bay, gear_details, year, month, zone, subzone, grid) |> 
@@ -275,9 +273,175 @@ comm_bm |>
 #       facet_wrap(~zone, scales = "free")
 # 
 # ### Southern Indian River Lagoon ----
-# comm_bm |>
-#       # filter(gear_details == "21.3-m Seine") |>
-#       filter(bay == "TQ") |> 
-#       ggplot(aes(x=date, y = mean_comm_bm, color = gear_details)) +
-#       geom_line(linewidth = 1.5) +
-#       facet_wrap(~zone, scales = "free")
+comm_bm |>
+      # filter(gear_details == "21.3-m Seine") |>
+      filter(bay == "TQ") |>
+      ggplot(aes(x=date, y = mean_comm_bm, color = gear_details)) +
+      geom_line(linewidth = 1.5) +
+      facet_wrap(~zone, scales = "free")
+
+ts_flags <- read_csv("local-data/flag_report_ts_zones.csv")
+
+dat6 <- dat5 |> 
+      left_join(ts_flags, by = c("bay", "zone")) |> 
+      filter(!is.na(flag)) |> 
+      select(-flag)
+
+grid_summary <- dat6 |> 
+      group_by(bay, zone) |> 
+      summarize(grids = n_distinct(grid))
+
+### lay out forage fish vs other -----
+
+dat7 <- dat6 |> 
+      mutate(forage_fish = case_when(
+            str_detect(common_name, regex("herring", ignore_case = TRUE)) ~ "forage fish",
+            str_detect(common_name, regex("anchov", ignore_case = TRUE)) ~ "forage fish",
+            str_detect(common_name, regex("perch", ignore_case = TRUE)) ~ "forage fish",
+            str_detect(common_name, regex("bream", ignore_case = TRUE)) ~ "forage fish",
+            str_detect(common_name, regex("blenn", ignore_case = TRUE)) ~ "forage fish",
+            str_detect(common_name, regex("bumper", ignore_case = TRUE)) ~ "forage fish",
+            str_detect(common_name, regex("minnow", ignore_case = TRUE)) ~ "forage fish",
+            str_detect(common_name, regex("pompano", ignore_case = TRUE)) ~ "forage fish",
+            str_detect(common_name, regex("sleeper", ignore_case = TRUE)) ~ "forage fish",
+            str_detect(common_name, regex("jenny", ignore_case = TRUE)) ~ "forage fish",
+            str_detect(common_name, regex("mojarra", ignore_case = TRUE)) ~ "forage fish",
+            str_detect(common_name, regex("eucinostomus", ignore_case = TRUE)) ~ "forage fish",
+            str_detect(common_name, regex("killifish", ignore_case = TRUE)) ~ "forage fish",
+            str_detect(common_name, regex("mummichog", ignore_case = TRUE)) ~ "forage fish",
+            str_detect(common_name, regex("mosquito", ignore_case = TRUE)) ~ "forage fish",
+            str_detect(common_name, regex("choice", ignore_case = TRUE)) ~ "forage fish",
+            str_detect(common_name, regex("sardine", ignore_case = TRUE)) ~ "forage fish",
+            str_detect(common_name, regex("silverside", ignore_case = TRUE)) ~ "forage fish",
+            str_detect(common_name, regex("croaker", ignore_case = TRUE)) ~ "forage fish",
+            str_detect(common_name, regex("herring", ignore_case = TRUE)) ~ "forage fish",
+            str_detect(common_name, regex("pigfish", ignore_case = TRUE)) ~ "forage fish",
+            str_detect(common_name, regex("spot", ignore_case = TRUE)) ~ "forage fish",
+            str_detect(common_name, regex("mullet", ignore_case = TRUE)) ~ "forage fish",
+            str_detect(common_name, regex("batfish", ignore_case = TRUE)) ~ "forage fish",
+            str_detect(common_name, regex("pinfish", ignore_case = TRUE)) ~ "forage fish",
+            str_detect(common_name, regex("menhaden", ignore_case = TRUE)) ~ "forage fish",
+            str_detect(common_name, regex("goby", ignore_case = TRUE)) ~ "forage fish",
+            str_detect(common_name, regex("gobies", ignore_case = TRUE)) ~ "forage fish",
+            str_detect(common_name, regex("whiff", ignore_case = TRUE)) ~ "forage fish",
+            str_detect(common_name, regex("skilletfish", ignore_case = TRUE)) ~ "forage fish",
+            str_detect(common_name, regex("sunfish", ignore_case = TRUE)) ~ "forage fish",
+            str_detect(common_name, regex("leatherjack", ignore_case = TRUE)) ~ "forage fish",
+            str_detect(common_name, regex("hogchoker", ignore_case = TRUE)) ~ "forage fish",
+            str_detect(common_name, regex("sole", ignore_case = TRUE)) ~ "forage fish",
+            str_detect(common_name, regex("shad", ignore_case = TRUE)) ~ "forage fish",
+            str_detect(common_name, regex("bluegill", ignore_case = TRUE)) ~ "forage fish",
+            str_detect(common_name, regex("shiner", ignore_case = TRUE)) ~ "forage fish",
+            str_detect(common_name, regex("warmouth", ignore_case = TRUE)) ~ "forage fish",
+            str_detect(common_name, regex("darter", ignore_case = TRUE)) ~ "forage fish",
+            str_detect(common_name, regex("chubsucker", ignore_case = TRUE)) ~ "forage fish",
+            str_detect(common_name, regex("flagfish", ignore_case = TRUE)) ~ "forage fish",
+            str_detect(common_name, regex("tomtate", ignore_case = TRUE)) ~ "forage fish",
+            str_detect(common_name, regex("grunt", ignore_case = TRUE)) ~ "forage fish",
+            str_detect(common_name, regex("jewelfish", ignore_case = TRUE)) ~ "forage fish",
+            str_detect(common_name, regex("cichlid", ignore_case = TRUE)) ~ "forage fish",
+            TRUE ~ "other"))
+
+test <- dat7 |> 
+      select(forage_fish, common_name, scientific_name) |> 
+      distinct() 
+
+forage_fish <- test |> filter(forage_fish == "forage fish")
+
+dat8 <- dat7 |> 
+      mutate(forage_fish1 = case_when(
+            common_name == "drums and croakers" ~ "other",
+            common_name == "Spotted Gar" ~ "other",
+            common_name == "Spotted Sucker" ~ "other",
+            common_name == "Spotted Seatrout" ~ "other",
+            common_name == "Florida Pompano" ~ "other",
+            TRUE ~ forage_fish
+      )) |> 
+      select(-forage_fish) |> 
+      rename(forage_fish = forage_fish1)
+
+test <- dat8 |> 
+      select(forage_fish, common_name, scientific_name) |> 
+      distinct() 
+
+forage_fish <- test |> filter(forage_fish == "forage fish")
+
+### examine body size information for each species ----
+
+ff_body_size <- dat8 |> 
+      filter(forage_fish == "forage fish") |> 
+      group_by(forage_fish, scientific_name, common_name) |> 
+      summarize(mean_length = mean(mean_length, na.rm = TRUE),
+                max_length = mean(max_length, na.rm = TRUE)) |> 
+      arrange(mean_length)
+
+### clean environment ---
+keep <- c("dat8", "nacheck")
+rm(list = setdiff(ls(), keep))
+
+forage_fish_filtered <- dat8 |> 
+      filter(forage_fish == "forage fish") |> 
+      select(-forage_fish)
+
+# write_rds(forage_fish_filtered, "local-data/forage_fish_master.RDS")
+
+forage_fish_list <- forage_fish_filtered |> 
+      group_by(common_name, scientific_name) |> 
+      summarize(mean_length = mean(mean_length, na.rm = TRUE),
+                mean_weight = mean(mean_weight_g, na.rm = TRUE),
+                a = mean(lw_a, na.rm = TRUE),
+                b = mean(lw_b, na.rm = TRUE)) |> 
+      ungroup() |> 
+      mutate(a = case_when(
+            scientific_name == 'Gobiosoma spp.' ~ NA,
+            TRUE ~ a
+      )) |> 
+      mutate(b = case_when(
+            scientific_name == 'Gobiosoma spp.' ~ NA,
+            TRUE ~ b
+      ))
+      
+# write_csv(forage_fish_list, "local-data/forage_fish_species_list.csv")
+
+# ### creating monthly biomass for report -----
+# monthly_comm_bm <- dat8 |> 
+#       filter(forage_fish == "forage fish") |> 
+#       group_by(bay, gear_details, year, month, zone, grid) |> 
+#       summarize(comm_tot_bm = sum(n*mean_weight_g, na.rm = TRUE),
+#                 comm_areal_bm = comm_tot_bm/area_m2) |> 
+#       ungroup() |> 
+#       distinct() |> 
+#       group_by(bay, year, month) |> 
+#       summarize(mean_comm_bm = mean(comm_areal_bm, na.rm = TRUE)) |> 
+#       ungroup() |> 
+#       mutate(date = as.Date(paste(year, month, "01", sep = "-")))
+# 
+# monthly_comm_bm |> 
+#       ggplot(aes(x = date, y = mean_comm_bm, color = bay)) +
+#       geom_line() +
+#       facet_wrap(~bay, scales = "free")
+
+hers_traits <- read_csv("local-data/fish-traits-HERS.csv") |> 
+      rename(scientific_name = Species) |> 
+      janitor::clean_names()
+glimpse(hers_traits)
+
+ff_traits <- forage_fish_list |> 
+      left_join(hers_traits, by = "scientific_name") |> 
+      select(common_name, scientific_name, mean_length, mean_weight,
+             a, b, class, order, k, lm, qb, troph, depth_max, 
+             temp_pref_mean, generation_time)
+
+# writexl::write_xlsx(ff_traits, "local-data/forage_fish_trait_list.xlsx")
+
+tbl_corp_hydrolab <- read_rds('local-data/Hydro.RDS') |> 
+      select(-Flag) |> 
+      janitor::clean_names()
+
+test <- forage_fish_filtered |> 
+      left_join(tbl_corp_hydrolab, by = "reference") |> 
+      distinct()
+
+test1 <- forage_fish_filtered |> anti_join(test)
+
+### max, min, mean, weighted_mean, quantiles?
