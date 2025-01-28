@@ -54,5 +54,46 @@ df_phys <- df |> left_join(tbl_corp_hydrolab, by = "reference") |>  distinct() |
              cond = conductivity) |> 
       select(-beg_end)
 glimpse(df_phys)
-write_rds(df_phys, "local-data/forage_fish_master_v2.RDS")
+
+# write_rds(df_phys, "local-data/forage_fish_master_v2.RDS")
+rm(bio, df ,df_phys, tbl_corp_hydrolab, traits)
+
+df <- read_rds("local-data/forage_fish_master_v2.RDS")
+glimpse(df)
+
+
+comm_bm <- df |> 
+      group_by(bay, gear_details, year, month, zone, subzone, grid) |> 
+      summarize(comm_tot_bm = sum(n*mean_weight_g, na.rm = TRUE),
+                comm_areal_bm = comm_tot_bm/area_m2) |> 
+      ungroup() |> 
+      distinct() |> 
+      group_by(bay, year, month) |> 
+      summarize(mean_comm_bm = mean(comm_areal_bm, na.rm = TRUE),
+                sd_comm_bm = sd(comm_areal_bm, na.rm = TRUE)) |> 
+      ungroup() |> 
+      mutate(date = as.Date(paste(year, month, "01", sep = "-"))) |> 
+      group_by(bay, year) |> 
+      mutate(annual_comm_bm = mean(mean_comm_bm, na.rm = TRUE),
+             sd_comm_bm = sd(mean_comm_bm, na.rm = TRUE))
+
+comm_bm |>
+      ggplot(aes(x = date, y = mean_comm_bm, group = bay, color = bay)) +
+      # geom_ribbon(aes(ymin = mean_comm_bm - sd_comm_bm,
+      #             ymax = mean_comm_bm + sd_comm_bm),
+      #             alpha = 0.2) +
+      geom_line(size = 1) +
+      facet_wrap(~bay, scales = "free") + 
+      theme(axis.text = element_text(size = 14, face = "bold", colour = "black"),
+            axis.title = element_text(size = 16, face = "bold", colour = "black"),
+            plot.title = element_text(size = 16, face = "bold", colour = "black"),
+            panel.grid.major = element_blank(),
+            axis.line = element_line(colour = "black"),
+            panel.grid.minor = element_blank(),
+            panel.border = element_blank(),
+            panel.background = element_blank())
+
+### read in ece information and join up ----
+heat_wave <- read_csv('local-data/warm-snap-severity.csv')
+cold_snap <- read_csv('local-data/cold-snap-severity.csv')
 
