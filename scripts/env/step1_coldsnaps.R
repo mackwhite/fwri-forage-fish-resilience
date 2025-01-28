@@ -375,6 +375,8 @@ severe_cold_fronts <- auc |>
 nacheck(severe_cold_fronts)
 glimpse(severe_cold_fronts)
 
+write_csv(severe_cold_fronts, "local-data/marine-cold-snap-severity.csv")
+
 ### visualize events and severity through time ------ 
 
 ### set color pallete for visualizations ---
@@ -394,16 +396,16 @@ severity_palette = c("Moderate"="#88C0D0",
 severe_cold_fronts |> 
       filter(flag %in% c("Significant", "Severe", "Extreme")) |>
       filter(start_year >= 1980) |> 
-      group_by(bay, estuary) |>
-      mutate(auc = scale(auc, center = TRUE)) |>
+      # group_by(bay, estuary) |>
+      # mutate(auc = scale(auc, center = TRUE)) |>
       ggplot(aes(x = start_year, y = auc, color = flag)) + 
       geom_point(size = 2) +
       geom_smooth(method = "lm", color = "black") +
       labs(x = "Year", y = "Scaled Discrete Cold Snap Severity (AUC)", color = 'Severity') +
       theme_bw() +
-      facet_wrap(~estuary) +
+      facet_wrap(~estuary, scales = "free") +
       scale_color_manual(values = severity_palette)+
-      scale_x_continuous(breaks = c(1960,1970,1980,1990,2000,2010,2020)) +
+      scale_x_continuous(breaks = c(1980,1990,2000,2010,2020)) +
       # scale_y_continuous(breaks = c(0.0,0.3,0.6,0.9,1.2)) +
       theme(axis.text = element_text(size = 12, face = "bold", colour = "black"), 
             axis.title.x = element_blank(),
@@ -419,8 +421,8 @@ severe_cold_fronts |>
             strip.background = element_rect(fill = 'white'),
             strip.text = element_text(size = 12, face = "bold", colour = "black", hjust = 0.5))
 
-# ggsave('figs/severe-cold-snap-auc.png', 
-#        dpi = 800, 
-#        units= 'in', 
-#        height = 6, 
+# ggsave('figs/severe-cold-snap-auc.png',
+#        dpi = 800,
+#        units= 'in',
+#        height = 6,
 #        width = 6.5)

@@ -32,7 +32,7 @@ severity_palette = c("Moderate"="#88C0D0",
 
 ### read in data and bind -----
 temp <- read_csv('local-data/temp-rainfall-data.csv') |> 
-      filter(metric == "max_temp") |> 
+      filter(metric == "min_temp") |> 
       mutate(jday = yday(date)) |> 
       group_by(bay, estuary, jday) |> 
       mutate(dmean = mean(value, na.rm = TRUE),
@@ -70,7 +70,7 @@ temp |>
       distinct() |> 
       ggplot(aes(x = jday, y = dmean, color = estuary)) + 
       geom_line(linewidth = 2) +
-      labs(x = "Julian Day", y = "Climatological Mean Temperature (°C)", color = 'Estuary') +
+      labs(x = "Julian Day", y = "Climatological Mean Minimum Temperature (°C)", color = 'Estuary') +
       theme_bw() +
       facet_wrap(~estuary) +
       scale_color_manual(values = estuary_palette)+
@@ -90,29 +90,29 @@ temp |>
             strip.background = element_rect(fill = 'white'),
             strip.text = element_text(size = 12, face = "bold", colour = "black", hjust = 0.5))
 
-# ggsave('figs/climatological-means.png',
+# ggsave('figs/climatological-minimum-temps-mean.png',
 #        dpi = 800,
 #        units= 'in',
 #        height = 6,
 #        width = 6.5)
 
-### defining thresholds for 90th percentile evaluation ---
+### defining thresholds for 10th percentile evaluation ---
 threshold <- temp |> 
       group_by(bay, estuary, month) |> 
       group_by(bay, estuary, jday) |> 
       mutate(
-            threshold_90 = quantile(value, 0.90, na.rm = TRUE),
-            threshold_95 = quantile(value, 0.95, na.rm = TRUE),
-            threshold_99 = quantile(value, 0.99, na.rm = TRUE) 
+            threshold_10 = quantile(value, 0.10, na.rm = TRUE),
+            threshold_05 = quantile(value, 0.05, na.rm = TRUE),
+            threshold_01 = quantile(value, 0.01, na.rm = TRUE) 
       ) |> 
       mutate(flag = case_when(
-            value >= threshold_99 ~ "Extreme",
-            value >= threshold_95 ~ "Severe",
-            value >= threshold_90 ~ "Significant",
+            value <= threshold_01 ~ "Extreme",
+            value <= threshold_05 ~ "Severe",
+            value <= threshold_10 ~ "Significant",
             TRUE ~ "Moderate"
       )) |> 
       mutate(threshold_breached = if_else(
-            value >= threshold_90,
+            value <= threshold_10,
             "yes", 
             "no", 
       )) |> 
@@ -123,10 +123,10 @@ threshold <- temp |>
       ungroup() |> 
       group_by(bay, estuary, event_id) |> 
       mutate(run_length = n(),
-             mhw = if_else(
-                   ### if threshold was greater than 90th percentile AND duration is greater than or equal to five days
+             coldsnap = if_else(
+                   ### if threshold was less than 10th percentile AND duration is greater than or equal to five days
                    threshold_breached == "yes" & run_length >= 5,
-                   "mhw",
+                   "coldsnap",
                    "normal"
              )) |> 
       ungroup() |> 
@@ -139,75 +139,75 @@ threshold1 <- threshold |>
       # group_by(bay, estuary) |> 
       arrange(bay, date) |> 
       # Flag days where the threshold was breached
-      mutate(mhw_event = ifelse(mhw == "mhw", 1, 0)) |> 
+      mutate(coldsnap_event = ifelse(coldsnap == "coldsnap", 1, 0)) |> 
       # Assign initial event ID using run-length encoding
-      mutate(mhw_event_id = case_when(
-            mhw == "mhw" ~ event_id,
-            mhw == "normal" ~ NA_integer_
+      mutate(coldsnap_event_id = case_when(
+            coldsnap == "coldsnap" ~ event_id,
+            coldsnap == "normal" ~ NA_integer_
       )) |> 
       ungroup() |> 
       arrange(bay, date)
 
 threshold2 <- threshold1 |> 
-      group_by(bay, mhw_event_id) |>
-      mutate(mhw_start = case_when(
-            !is.na(mhw_event_id) ~ min(date),
-            is.na(mhw_event_id) ~ NA_Date_),
-            mhw_end = case_when(
-                  !is.na(mhw_event_id) ~ max(date),
-                  is.na(mhw_event_id) ~ NA_Date_))
+      group_by(bay, coldsnap_event_id) |>
+      mutate(coldsnap_start = case_when(
+            !is.na(coldsnap_event_id) ~ min(date),
+            is.na(coldsnap_event_id) ~ NA_Date_),
+            coldsnap_end = case_when(
+                  !is.na(coldsnap_event_id) ~ max(date),
+                  is.na(coldsnap_event_id) ~ NA_Date_))
 
 threshold3 <- threshold2 |> 
-      filter(!is.na(mhw_event_id)) |> 
-      select(bay, estuary, mhw_event_id, mhw_start, mhw_end) |> 
+      filter(!is.na(coldsnap_event_id)) |> 
+      select(bay, estuary, coldsnap_event_id, coldsnap_start, coldsnap_end) |> 
       distinct()
 
 threshold4 <- threshold3 |> 
       group_by(bay) |> 
-      arrange(bay, mhw_start) |> 
-      mutate(gap_days = as.numeric(difftime(mhw_start, lag(mhw_end), units = "days"))) |> 
-      mutate(mhw_event_id2 = if_else(
+      arrange(bay, coldsnap_start) |> 
+      mutate(gap_days = as.numeric(difftime(coldsnap_start, lag(coldsnap_end), units = "days"))) |> 
+      mutate(coldsnap_event_id2 = if_else(
             gap_days > 0 & gap_days <= 2,
-            lag(mhw_event_id),
-            mhw_event_id
+            lag(coldsnap_event_id),
+            coldsnap_event_id
       )) |> 
-      mutate(diff = mhw_event_id-mhw_event_id2)
+      mutate(diff = coldsnap_event_id-coldsnap_event_id2)
 
 threshold5 <- threshold4 |> 
-      arrange(bay, mhw_event_id) |> 
-      group_by(bay, mhw_event_id2) |> 
-      mutate(mhw_end2 = case_when(
-            lead(diff) >= 1 ~ lead(mhw_end),
-            TRUE ~ mhw_end),
-            mhw_end = mhw_end2) |> 
-      select(bay, estuary, mhw_event_id2, mhw_start, mhw_end) |> 
-      rename(mhw_event_id = mhw_event_id2) |> 
-      arrange(bay, mhw_start, mhw_event_id) |> 
-      group_by(mhw_event_id, bay) |> 
+      arrange(bay, coldsnap_event_id) |> 
+      group_by(bay, coldsnap_event_id2) |> 
+      mutate(coldsnap_end2 = case_when(
+            lead(diff) >= 1 ~ lead(coldsnap_end),
+            TRUE ~ coldsnap_end),
+            coldsnap_end = coldsnap_end2) |> 
+      select(bay, estuary, coldsnap_event_id2, coldsnap_start, coldsnap_end) |> 
+      rename(coldsnap_event_id = coldsnap_event_id2) |> 
+      arrange(bay, coldsnap_start,coldsnap_event_id) |> 
+      group_by(coldsnap_event_id, bay) |> 
       slice_head(n=1) |> 
       ungroup()
 
 threshold5_expand <- threshold5 |> 
-      mutate(date_seq = map2(mhw_start, mhw_end, ~seq(.x, .y, by = 'day'))) |> 
+      mutate(date_seq = map2(coldsnap_start, coldsnap_end, ~seq(.x, .y, by = 'day'))) |> 
       unnest(date_seq) |> 
       rename(date = date_seq) |> 
-      group_by(mhw_event_id) |> 
+      group_by(coldsnap_event_id) |> 
       mutate(duration = n()) |>
       group_by(bay) |> 
       mutate(duration = if_else(
-            is.na(mhw_event_id),
-            sum(is.na(mhw_event_id)),
+            is.na(coldsnap_event_id),
+            sum(is.na(coldsnap_event_id)),
             duration)) |>
       ungroup() |> 
-      mutate(event = "mhw") |> 
-      select(-mhw_event_id)
+      mutate(event = "coldsnap") |> 
+      select(-coldsnap_event_id)
 
 nacheck(threshold5_expand)
 glimpse(threshold5_expand)
 glimpse(threshold2)
 
 threshold6 <- threshold2 |> 
-      select(-mhw_start, -mhw_end) |> 
+      select(-coldsnap_start, -coldsnap_end) |> 
       left_join(threshold5_expand, by = c("bay", "estuary", "date")) |> 
       arrange(bay, date) |> 
       ungroup()
@@ -215,10 +215,10 @@ threshold6 <- threshold2 |>
 glimpse(threshold6)
 nacheck(threshold6)
 
-mhw <- threshold6 |> 
+coldsnap <- threshold6 |> 
       select(bay, estuary, date, jday, 
-             metric, value, dmean, dsd, mmean, msd, threshold_90, 
-             threshold_breached, event, mhw_start, mhw_end, duration) |> 
+             metric, value, dmean, dsd, mmean, msd, threshold_10, 
+             threshold_breached, event, coldsnap_start, coldsnap_end, duration) |> 
       mutate(year = year(date),
              month = month(date),
              flag = case_when(
@@ -228,43 +228,43 @@ mhw <- threshold6 |>
       filter(flag == "safe") |> 
       select(-flag)
 
-nacheck(mhw)
-glimpse(mhw)
+nacheck(coldsnap)
+glimpse(coldsnap)
 
 ### clean environment before next step ---
-keep <- c("mhw","nacheck")
+keep <- c("coldsnap","nacheck")
 rm(list = setdiff(ls(), keep))
 
-mhw1 <- mhw |> 
-      group_by(bay, mhw_start, mhw_end) |> 
-      mutate(mhw_event_id = if_else(
-                  event == "mhw",                            
-                  paste0(bay, "_", cur_group_id()),          
-                  NA_character_)) |> 
+coldsnap1 <- coldsnap |> 
+      group_by(bay, coldsnap_start, coldsnap_end) |> 
+      mutate(coldsnap_event_id = if_else(
+            event == "coldsnap",                            
+            paste0(bay, "_", cur_group_id()),          
+            NA_character_)) |> 
       ungroup()
 
-mhw2 <- mhw1 |> 
-      filter(!is.na(mhw_event_id)) |> 
-      group_by(bay, mhw_event_id) |> 
-      mutate(max = max(value),
+coldsnap2 <- coldsnap1 |> 
+      filter(!is.na(coldsnap_event_id)) |> 
+      group_by(bay, coldsnap_event_id) |> 
+      mutate(min = min(value),
              mean = mean(value),
-             mean_90 = mean(threshold_90),
-             daily_anomaly = value - threshold_90,
-             max_anomaly = max-mean_90,
-             mean_anomaly = mean-mean_90,
+             mean_10 = mean(threshold_10),
+             daily_anomaly = threshold_10 - value,
+             min_anomaly = mean_10 - min,
+             mean_anomaly = mean_10 - mean,
              variance_anomaly = sd(value),
              cum_anomaly = sum(daily_anomaly)) |> 
       ungroup()
-      
-nacheck(mhw2)
-glimpse(mhw2)
 
-mhw3 <- mhw2 |> 
-      group_by(bay, estuary, mhw_event_id) |> 
+nacheck(coldsnap2)
+glimpse(coldsnap2)
+
+coldsnap3 <- coldsnap2 |> 
+      group_by(bay, estuary, coldsnap_event_id) |> 
       summarize(auc = trapz(as.numeric(date), mean_anomaly),
                 duration = duration,
-                start_date = mhw_start,
-                end_date = mhw_end) |> 
+                start_date = coldsnap_start,
+                end_date = coldsnap_end) |> 
       ungroup() |> 
       distinct() |> 
       group_by(bay, estuary) |> 
@@ -281,15 +281,15 @@ mhw3 <- mhw2 |>
       )) |> 
       ungroup()
 
-nacheck(mhw3)
-glimpse(mhw3)
+nacheck(coldsnap3)
+glimpse(coldsnap3)
 
-mhw_severity <- mhw1 |> 
-      left_join(mhw3, by = c("bay", "estuary", "mhw_event_id", "duration"))
+coldsnap_severity <- coldsnap1 |> 
+      left_join(coldsnap3, by = c("bay", "estuary", "coldsnap_event_id", "duration"))
 
-test <- mhw_severity |> filter(event == "mhw") |> 
-      select(bay, estuary, date, jday, metric, value, dmean, event, mhw_start,
-             mhw_end, duration, year, month, mhw_event_id, start_date, end_date,
+test <- coldsnap_severity |> filter(event == "coldsnap") |> 
+      select(bay, estuary, date, jday, metric, value, dmean, event, coldsnap_start,
+             coldsnap_end, duration, year, month, coldsnap_event_id, start_date, end_date,
              auc_90, auc_95, auc_99, flag)
 
-write_csv(test, 'local-data/marine-heat-wave-severity.csv')
+write_csv(test, 'local-data/marine-cold-snap-severity.csv')
