@@ -51,7 +51,7 @@ spp_table <- df |>
       mutate(proportion = obs/sum(obs),
              percentage = (obs / sum(obs)) * 100) |> 
       arrange(desc(obs))
-write_csv(spp_table, "tables/species-table.csv")
+# write_csv(spp_table, "tables/species-table.csv")
 
 df_total <- df |>
       left_join(estuary, by = "bay") |> 
@@ -215,13 +215,14 @@ summary(model)
 r2 <- summary(model)$r.squared
 
 df_stability |>
+      filter(comm_species_richness <= 12) |> 
+      # ggplot(aes(x = comm_species_richness, y = comm_bm_stability)) +
       ggplot(aes(x = log1p(comm_species_richness), y = log1p(comm_bm_stability))) +
       geom_point(aes(color = estuary), size = 2) +  # Adds the scatter plot points
       geom_smooth(method = "lm", size = 2, color = "black", linetype = "solid", se = FALSE) +
-      # geom_smooth(method = "lm", se = FALSE) +  # Adds linear model lines for each program
       labs(x = "log(Species Richness)",
            y = "log(Forage Fish Biomass Stability)") +
-      scale_x_continuous(breaks = c(1.0,1.5,2.0,2.5,3.0)) +
+      scale_x_continuous(breaks = c(1.25,1.50,1.75,2.00,2.25,2.50)) +
       scale_y_continuous(breaks = c(0.00,0.25,0.50,0.75,1.00,1.25)) +
       # annotate('text', 
       #          x = 0.9, y = 1.8,
@@ -233,9 +234,6 @@ df_stability |>
             axis.title.x = element_text(size = 15, face = "bold", colour = "black"),
             axis.title.y = element_text(size = 15, face = "bold", colour = "black"),
             plot.title = element_text(size = 16, face = "bold", colour = "black", hjust = 0.5), 
-            # panel.grid.major = element_blank(),
-            # panel.grid.minor = element_blank(),
-            # legend.position = "none",
             legend.position = "right",
             legend.text = element_text(size = 12, color = "black", face = 'bold'),
             legend.title = element_text(size = 12, color = "black", face = 'bold'),
