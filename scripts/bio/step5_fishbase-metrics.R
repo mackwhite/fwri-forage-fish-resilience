@@ -19,9 +19,28 @@ nacheck <- function(df) {
 
 ### read in necessary data ---
 
-spp <- read_xlsx('local-data/forage_fish_trait_list.xlsx') |> 
+spp <- read_xlsx('local-data/archive/forage_fish_trait_list.xlsx') |> 
       janitor::clean_names() |> 
       select(scientific_name, common_name, family, genus, specific_epithet)
+
+# test <- rfishbase::diet(spp$scientific_name)
+# test1 <- rfishbase::diet_items(spp$scientific_name)
+# hers <- read_csv("local-data/archive/fish-traits-HERS.csv") |> 
+#       select(troph1 = Troph,
+#              scientific_name = Species) 
+# 
+# join <- hers |> inner_join(hers_estimate)
+# 
+# hers_estimate <- rfishbase::estimate(hers$scientific_name) |> 
+#       select(scientific_name = Species, Troph)
+# 
+# join |> 
+#       ggplot(aes(x= troph1,y=Troph)) +
+#       geom_point()+
+#       geom_abline()
+# 
+# test <- lm(join$troph1 ~ join$Troph)
+# summary(test)
 
 ests <- rfishbase::estimate(spp$scientific_name) |> 
       janitor::clean_names() |> 
@@ -34,7 +53,9 @@ ests <- rfishbase::estimate(spp$scientific_name) |>
       select(scientific_name, feeding_path, troph, a, b, k, l_inf, depth_max, depth_min,
              ppr_min, ppr_max, temp_pref_min, temp_pref_mean, temp_pref_max,
              tl_max, sl_max)
-      
+
+test <- rfishbase::ecology(spp$scientific_name)
+
 spp_ests <- spp |> 
       left_join(ests, by = "scientific_name") |> 
       group_by(genus) |> 
