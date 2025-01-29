@@ -31,7 +31,7 @@ severity_palette = c("Moderate"="#88C0D0",
                      "Extreme"="black")
 
 ### read in data and bind -----
-temp <- read_csv('local-data/temp-rainfall-data.csv') |> 
+temp <- read_csv('local-data/archive/temp-rainfall-data.csv') |> 
       filter(metric == "max_temp") |> 
       mutate(jday = yday(date)) |> 
       group_by(bay, estuary, jday) |> 
@@ -90,7 +90,7 @@ temp |>
             strip.background = element_rect(fill = 'white'),
             strip.text = element_text(size = 12, face = "bold", colour = "black", hjust = 0.5))
 
-# ggsave('figs/climatological-means.png',
+# ggsave('figs/climatological-maximum-means.png',
 #        dpi = 800,
 #        units= 'in',
 #        height = 6,
@@ -287,9 +287,8 @@ glimpse(mhw3)
 mhw_severity <- mhw1 |> 
       left_join(mhw3, by = c("bay", "estuary", "mhw_event_id", "duration"))
 
-test <- mhw_severity |> filter(event == "mhw") |> 
-      select(bay, estuary, date, jday, metric, value, dmean, event, mhw_start,
-             mhw_end, duration, year, month, mhw_event_id, start_date, end_date,
-             auc_90, auc_95, auc_99, flag)
+mhw_severity2 <- mhw2 |> 
+      left_join(mhw3, by = c("bay", "estuary", "mhw_event_id", "duration"))
 
-write_csv(test, 'local-data/marine-heat-wave-severity.csv')
+# write_csv(mhw_severity, 'local-data/marine-heat-wave-timeseries.csv')
+# write_csv(mhw_severity2, 'local-data/marine-heat-wave-severity.csv')
