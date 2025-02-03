@@ -240,10 +240,69 @@ df_stability |>
             # legend.title = element_text(size = 12, color = "black", face = 'bold'),
             panel.background = element_rect(fill = "white"))
 
-ggsave('figs/species-richness-stability.png',
-       dpi = 800,
-       units= 'in',
-       height = 6,
-       width = 6)
+# ggsave('figs/species-richness-stability.png',
+#        dpi = 800,
+#        units= 'in',
+#        height = 6,
+#        width = 6)
 
 # write_csv(df_stability, "local-data/stability-model-data-012025.csv")
+
+df_total |> 
+      mutate(gear_estuary = paste(gear_details, estuary, sep = "_")) |> 
+      group_by(date, gear_estuary) |> 
+      mutate(mean = mean(total_biomass_m2, na.rm = TRUE)) |> 
+      ggplot(aes(x=date, y=mean)) +
+      geom_line()+
+      facet_wrap(~gear_estuary) + 
+      theme(axis.text = element_text(size = 12, face = "bold", colour = "black"), 
+            axis.line = element_line(color = "black"),
+            axis.title.x = element_text(size = 15, face = "bold", colour = "black"),
+            axis.title.y = element_text(size = 15, face = "bold", colour = "black"),
+            plot.title = element_text(size = 16, face = "bold", colour = "black", hjust = 0.5), 
+            legend.position = "none",
+            # legend.text = element_text(size = 12, color = "black", face = 'bold'),
+            # legend.title = element_text(size = 12, color = "black", face = 'bold'),
+            panel.background = element_rect(fill = "white"))
+
+df_total |> 
+      mutate(gear_estuary = paste(gear_details, estuary, sep = "_")) |> 
+      group_by(year, gear_estuary) |> 
+      mutate(mean = mean(total_biomass_m2, na.rm = TRUE)) |> 
+      ggplot(aes(x=year, y=mean)) +
+      geom_line()+
+      facet_wrap(~gear_estuary, scales = "free") + 
+      theme(axis.text = element_text(size = 12, face = "bold", colour = "black"), 
+            axis.line = element_line(color = "black"),
+            axis.title.x = element_text(size = 15, face = "bold", colour = "black"),
+            axis.title.y = element_text(size = 15, face = "bold", colour = "black"),
+            plot.title = element_text(size = 16, face = "bold", colour = "black", hjust = 0.5), 
+            legend.position = "none",
+            # legend.text = element_text(size = 12, color = "black", face = 'bold'),
+            # legend.title = element_text(size = 12, color = "black", face = 'bold'),
+            panel.background = element_rect(fill = "white"))
+      
+### smaller seines may have only been seasonal in the early years
+### 1995 and on is probably perfectly fine - check before that
+### Charlotte Harbor  & Tampa Bay - those would be the ones that went back the furtherst
+### maybe indian river as well
+### if anything weird pops out in 2020, take a peak
+
+### length-weight stuff 
+
+### may be caveats to grids through time
+
+### separating precipitation from physical damage from datasets
+### mid to late 90s some pretty severe drought/precipitations
+### greenwood paper on some of this (early 2000s)
+### precipitation or maybe flow time series available daily
+### 2004 charlie hit CH (freshwater influence)
+## super strong storm that hit directly head on (mangrove die off - could be a paper)
+### unexplained signals that may not be captured in models
+### red flag on tequesta - catfish and mullet lesions started
+### until late in the 20-teens... 
+### two parallel analyses - based on different sampling gear, where the
+### 21.3 m seines gear would exclude tequesta
+### tampa effects of seagrass restoration
+### some really standout hydro years in the late 90s on west coast
+      
