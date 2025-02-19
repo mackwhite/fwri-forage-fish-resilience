@@ -39,13 +39,13 @@ cold_snap_palette = c("Moderate"="lightgrey",
 
 heat_waves <- read_csv("local-data/marine-heat-wave-severity.csv")
 hw_distinct <- heat_waves |> 
-      select(bay, estuary, mhw_event_id, year, metric, auc, duration, mean_anomaly, max_anomaly) |> 
+      select(bay, estuary, mhw_event_id, year, metric, auc, duration, mean_anomaly, max_anomaly, cum_anomaly) |> 
       distinct()
 
 cold_snaps <- read_csv('local-data/marine-cold-snap-severity.csv') |> 
       rename(max_anomaly = min_anomaly)
 cs_distinct <- cold_snaps |> 
-      select(bay, estuary, coldsnap_event_id, year, metric, auc, duration, mean_anomaly, max_anomaly) |> 
+      select(bay, estuary, coldsnap_event_id, year, metric, auc, duration, mean_anomaly, max_anomaly, cum_anomaly) |> 
       distinct()
 
 glimpse(heat_waves)
@@ -63,14 +63,17 @@ cs_distinct |>
       summarize(mean_annual_auc = mean(auc, na.rm = TRUE),
                 mean_annual_duration = mean(duration, na.rm = TRUE),
                 max_annual_anomaly = mean(max_anomaly, na.rm = TRUE),
+                mean_annual_cum_anomaly = mean(cum_anomaly, na.rm = TRUE),
+                max_annual_cum_anomaly = max(cum_anomaly, na.rm = TRUE),
                 n = n_distinct(coldsnap_event_id)) |> 
       ungroup() |> 
       # filter(flag %in% c("Significant", "Severe", "Extreme")) |>
-      filter(year >= 1980) |>
-      ggplot(aes(x = year, y = mean_annual_auc)) + 
+      filter(year >= 1990) |>
+      filter(mean_annual_cum_anomaly <= 50) |> 
+      ggplot(aes(x = year, y = mean_annual_cum_anomaly)) + 
       geom_point(size = 2, color = "#4682B4") +
       geom_smooth(method = "lm", color = "black") +
-      labs(x = "Year", y = "Mean Annual Cold Snap Severity (AUC)", color = 'Intensity') +
+      labs(x = "Year", y = "Mean Annual Cold Snap Severity", color = 'Intensity') +
       theme_bw() +
       facet_wrap(~estuary, scales = "free") +
       # scale_color_manual(values = cold_snap_palette)+
@@ -90,7 +93,7 @@ cs_distinct |>
             strip.background = element_rect(fill = 'white'),
             strip.text = element_text(size = 12, face = "bold", colour = "black", hjust = 0.5))
 
-ggsave('figs/mean-annual-cold-snap-auc.png',
+ggsave('figs/mean-annual-cold-snap-cum-anomaly.png',
        dpi = 800,
        units= 'in',
        height = 6,
@@ -101,10 +104,13 @@ cs_distinct |>
       summarize(mean_annual_auc = mean(auc, na.rm = TRUE),
                 mean_annual_duration = mean(duration, na.rm = TRUE),
                 max_annual_anomaly = mean(max_anomaly, na.rm = TRUE),
+                mean_annual_cum_anomaly = mean(cum_anomaly, na.rm = TRUE),
+                max_annual_cum_anomaly = max(cum_anomaly, na.rm = TRUE),
                 n = n_distinct(coldsnap_event_id)) |> 
       ungroup() |> 
       # filter(flag %in% c("Significant", "Severe", "Extreme")) |>
-      filter(year >= 1980) |>
+      filter(year >= 1990) |>
+      filter(mean_annual_duration <=20) |> 
       ggplot(aes(x = year, y = mean_annual_duration)) + 
       geom_point(size = 2, color = "#4682B4") +
       geom_smooth(method = "lm", color = "black") +
@@ -134,57 +140,22 @@ ggsave('figs/mean-annual-cold-snap-duration.png',
        height = 6,
        width = 6.5)
 
-cs_distinct |> 
-      group_by(estuary, year) |> 
-      summarize(mean_annual_auc = mean(auc, na.rm = TRUE),
-                mean_annual_duration = mean(duration, na.rm = TRUE),
-                max_annual_anomaly = mean(max_anomaly, na.rm = TRUE),
-                n = n_distinct(coldsnap_event_id)) |> 
-      ungroup() |> 
-      # filter(flag %in% c("Significant", "Severe", "Extreme")) |>
-      filter(year >= 1980) |>
-      ggplot(aes(x = year, y = max_annual_anomaly)) + 
-      geom_point(size = 2, color = "#4682B4") +
-      geom_smooth(method = "lm", color = "black") +
-      labs(x = "Year", y = "Mean Annual Cold Snap Anomaly (°C)", color = 'Intensity') +
-      theme_bw() +
-      facet_wrap(~estuary, scales = "free") +
-      # scale_color_manual(values = cold_snap_palette)+
-      scale_x_continuous(breaks = c(1950,1960,1970,1980,1990,2000,2010,2020)) +
-      # scale_y_continuous(breaks = c(0.0,0.3,0.6,0.9,1.2)) +
-      theme(axis.text = element_text(size = 12, face = "bold", colour = "black"), 
-            axis.title.x = element_blank(),
-            axis.title.y = element_text(size = 15, face = "bold", colour = "black"),
-            plot.title = element_text(size = 16, face = "bold", colour = "black", hjust = 0.5), 
-            panel.grid.major = element_blank(),
-            panel.grid.minor = element_blank(),
-            legend.position = "none",
-            # legend.position = "right",
-            legend.text = element_text(size = 12, color = "black", face = 'bold'),
-            legend.title = element_text(size = 12, color = "black", face = 'bold'),
-            panel.background = element_rect(fill = "white"),
-            strip.background = element_rect(fill = 'white'),
-            strip.text = element_text(size = 12, face = "bold", colour = "black", hjust = 0.5))
-
-ggsave('figs/mean-annual-cold-snap-anomaly.png',
-       dpi = 800,
-       units= 'in',
-       height = 6,
-       width = 6.5)
-
 # heat wave figures -------------------------------------------------------
 hw_distinct |> 
       group_by(estuary, year) |> 
       summarize(mean_annual_auc = mean(auc, na.rm = TRUE),
                 mean_annual_duration = mean(duration, na.rm = TRUE),
-                max_annual_anomaly = mean(max_anomaly, na.rm = TRUE)) |> 
+                max_annual_anomaly = mean(max_anomaly, na.rm = TRUE),
+                mean_annual_cum_anomaly = mean(cum_anomaly, na.rm = TRUE),
+                max_annual_cum_anomaly = max(cum_anomaly, na.rm = TRUE),) |> 
       ungroup() |> 
       # filter(flag %in% c("Significant", "Severe", "Extreme")) |>
-      filter(year >= 1980) |>
-      ggplot(aes(x = year, y = mean_annual_auc)) + 
+      filter(year >= 1990) |>
+      filter(mean_annual_cum_anomaly <= 30) |>
+      ggplot(aes(x = year, y = mean_annual_cum_anomaly)) + 
       geom_point(size = 2, color = "#BF616A") +
       geom_smooth(method = "lm", color = "black") +
-      labs(x = "Year", y = "Mean Annual Heat Wave Severity (AUC)", color = 'Intensity') +
+      labs(x = "Year", y = "Mean Annual Heat Wave Severity", color = 'Intensity') +
       theme_bw() +
       facet_wrap(~estuary, scales = "free") +
       # scale_color_manual(values = cold_snap_palette)+
@@ -204,7 +175,7 @@ hw_distinct |>
             strip.background = element_rect(fill = 'white'),
             strip.text = element_text(size = 12, face = "bold", colour = "black", hjust = 0.5))
 
-ggsave('figs/mean-annual-heat-wave-auc.png',
+ggsave('figs/mean-annual-heat-wave-cum-anomaly.png',
        dpi = 800,
        units= 'in',
        height = 6,
@@ -214,10 +185,13 @@ hw_distinct |>
       group_by(estuary, year) |> 
       summarize(mean_annual_auc = mean(auc, na.rm = TRUE),
                 mean_annual_duration = mean(duration, na.rm = TRUE),
-                max_annual_anomaly = mean(max_anomaly, na.rm = TRUE)) |> 
+                max_annual_anomaly = mean(max_anomaly, na.rm = TRUE),
+                mean_annual_cum_anomaly = mean(cum_anomaly, na.rm = TRUE),
+                max_annual_cum_anomaly = max(cum_anomaly, na.rm = TRUE),) |> 
       ungroup() |> 
       # filter(flag %in% c("Significant", "Severe", "Extreme")) |>
-      filter(year >= 1980) |>
+      filter(year >= 1990) |>
+      filter(mean_annual_duration <= 27) |> 
       ggplot(aes(x = year, y = mean_annual_duration)) + 
       geom_point(size = 2, color = "#BF616A") +
       geom_smooth(method = "lm", color = "black") +
@@ -242,44 +216,6 @@ hw_distinct |>
             strip.text = element_text(size = 12, face = "bold", colour = "black", hjust = 0.5))
 
 ggsave('figs/mean-annual-heat-wave-duration.png',
-       dpi = 800,
-       units= 'in',
-       height = 6,
-       width = 6.5)
-
-
-hw_distinct |> 
-      group_by(estuary, year) |> 
-      summarize(mean_annual_auc = mean(auc, na.rm = TRUE),
-                mean_annual_duration = mean(duration, na.rm = TRUE),
-                max_annual_anomaly = mean(max_anomaly, na.rm = TRUE)) |> 
-      ungroup() |> 
-      # filter(flag %in% c("Significant", "Severe", "Extreme")) |>
-      filter(year >= 1980) |>
-      ggplot(aes(x = year, y = max_annual_anomaly)) + 
-      geom_point(size = 2, color = "#BF616A") +
-      geom_smooth(method = "lm", color = "black") +
-      labs(x = "Year", y = "Mean Annual Heat Wave Anomaly (°C)", color = 'Intensity') +
-      theme_bw() +
-      facet_wrap(~estuary, scales = "free") +
-      # scale_color_manual(values = cold_snap_palette)+
-      scale_x_continuous(breaks = c(1950,1960,1970,1980,1990,2000,2010,2020)) +
-      # scale_y_continuous(breaks = c(0.0,0.3,0.6,0.9,1.2)) +
-      theme(axis.text = element_text(size = 12, face = "bold", colour = "black"), 
-            axis.title.x = element_blank(),
-            axis.title.y = element_text(size = 15, face = "bold", colour = "black"),
-            plot.title = element_text(size = 16, face = "bold", colour = "black", hjust = 0.5), 
-            panel.grid.major = element_blank(),
-            panel.grid.minor = element_blank(),
-            legend.position = "none",
-            # legend.position = "right",
-            legend.text = element_text(size = 12, color = "black", face = 'bold'),
-            legend.title = element_text(size = 12, color = "black", face = 'bold'),
-            panel.background = element_rect(fill = "white"),
-            strip.background = element_rect(fill = 'white'),
-            strip.text = element_text(size = 12, face = "bold", colour = "black", hjust = 0.5))
-
-ggsave('figs/mean-annual-heat-wave-anomaly.png',
        dpi = 800,
        units= 'in',
        height = 6,
