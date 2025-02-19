@@ -259,6 +259,9 @@ mhw2 <- mhw1 |>
 nacheck(mhw2)
 glimpse(mhw2)
 
+### met with Ryan James - he said keep this here, and just call distinct() and then 
+### also add information for summer vs winter observations (maybe drop/incorporate winter "heat waves")
+
 mhw3 <- mhw2 |> 
       group_by(bay, estuary, mhw_event_id) |> 
       summarize(auc = trapz(as.numeric(date), mean_anomaly),

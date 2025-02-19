@@ -119,7 +119,7 @@ threshold <- temp |>
       ungroup() |> 
       group_by(bay, estuary) |> 
       arrange(bay, estuary, date) |> 
-      mutate(event_id= data.table::rleid(threshold_breached, by = bay)) |> 
+      mutate(event_id = data.table::rleid(threshold_breached, by = bay)) |> 
       ungroup() |> 
       group_by(bay, estuary, event_id) |> 
       mutate(run_length = n(),
@@ -256,6 +256,9 @@ coldsnap2 <- coldsnap1 |>
              cum_anomaly = sum(daily_anomaly)) |> 
       ungroup()
 
+### met with Ryan James - he said keep this here, and just call distinct() and then 
+### also add information for summer vs winter observations (maybe drop/incorporate summer "cold snaps")
+
 nacheck(coldsnap2)
 glimpse(coldsnap2)
 
@@ -292,3 +295,9 @@ coldsnap_severity2 <- coldsnap2 |>
 
 # write_csv(coldsnap_severity, 'local-data/marine-cold-snap-timeseries.csv')
 # write_csv(coldsnap_severity2, 'local-data/marine-cold-snap-severity.csv')
+
+coldsnap_severity2 |> 
+      ggplot(aes(x=auc_90, y=cum_anomaly)) +
+      geom_point() +
+      geom_abline()
+
