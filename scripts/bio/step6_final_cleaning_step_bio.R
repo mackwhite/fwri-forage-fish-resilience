@@ -45,16 +45,16 @@ df <- bio |> left_join(traits, by = c("common_name", "scientific_name")) |>
              min_weight_g = a * min_length_cm^b,
              max_weight_g = a * max_length_cm^b)
 
-# df_phys <- df |> left_join(tbl_corp_hydrolab, by = "reference") |>  distinct() |> 
-#       rename(ph = p_h,
-#              do2 = dissolved_o2,
-#              temp_c = temperature, 
-#              sal_ppt = salinity,
-#              cond = conductivity) |> 
-#       dplyr::select(-beg_end)
-# glimpse(df_phys)
-# df <- df_phys
-# rm(bio ,df_phys, tbl_corp_hydrolab, traits)
+df_phys <- df |> left_join(tbl_corp_hydrolab, by = "reference") |>  distinct() |>
+      rename(ph = p_h,
+             do2 = dissolved_o2,
+             temp_c = temperature,
+             sal_ppt = salinity,
+             cond = conductivity) |>
+      dplyr::select(-beg_end)
+glimpse(df_phys)
+df <- df_phys
+rm(bio ,df_phys, tbl_corp_hydrolab, traits)
 
 write_rds(df, "local-data/key-datasets/forage_fish_master.RDS")
 

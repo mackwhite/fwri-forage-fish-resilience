@@ -1,6 +1,6 @@
 ###project: Forage Fish Resilience
 ###author(s): MW
-###goal(s): generating figures for midterm report 
+###goal(s): generating summarized datasets
 ###date(s): January 2025
 ###note(s): 
 
@@ -36,7 +36,7 @@ cold_snap_palette = c("Moderate"="lightgrey",
                       "Extreme"="darkblue")
 
 ### read in data and bind -----
-df <- read_rds("local-data/forage_fish_master.RDS")
+df <- read_rds("local-data/key-datasets/forage_fish_master.RDS")
 glimpse(df)
 estuary <- read_csv("local-data/archive/for-joins/bay-to-estuary.csv") |> 
       janitor::clean_names()
@@ -58,15 +58,22 @@ df_total <- df |>
       group_by(year, month, day, bay, estuary, gear_details, rep, zone, subzone, grid) |>
       summarize(total_biomass = sum(n*mean_weight_g, na.rm = TRUE),
                 total_biomass_m2 = total_biomass/area_m2,
+                total_n = sum(n, na.rm = TRUE),
                 species_richness = n_distinct(scientific_name),
                 max_size = mean(tl_max, na.rm = TRUE),
                 mean_k = mean(k, na.rm = TRUE),
+                mean_generation_time = mean(generation_time, na.rm = TRUE),
                 mean_depth_max = mean(depth_max, na.rm = TRUE),
                 mean_depth_min = mean(depth_min, na.rm = TRUE),
                 mean_temp_pref_min = mean(temp_pref_min, na.rm = TRUE),
                 mean_tem_pref_mean = mean(temp_pref_mean, na.rm = TRUE),
                 mean_temp_pref_max = mean(temp_pref_max, na.rm = TRUE),
-                mean_troph = mean(troph, na.rm = TRUE)) |>
+                mean_troph = mean(troph, na.rm = TRUE),
+                benthic_n = sum(n * (feeding_path == "benthic"), na.rm = TRUE),
+                pelagic_n = sum(n * (feeding_path == "pelagic"), na.rm = TRUE),
+                benthic_prop = benthic_n/total_n,
+                pelagic_prop = pelagic_n/total_n
+                ) |>
       ungroup() |>
       distinct() |> 
       mutate(date = as.Date(paste(year, month, "01", sep = "-"))) |> 
@@ -91,41 +98,44 @@ low_obs_flag <- df_total |>
 
 ### filter out sites with low sample sizes ----
 
-df_total_sample_size <- df_total |> 
+df_total_sample <- df_total |> 
       left_join(low_obs_flag, by = c("bay", "estuary","zone", "grid", "gear_details")) |> 
       # filter(flag == "keep") |>
       select(-flag) |> 
       filter(year >= 1996)
+
+### reading in evenness metrics from step 8 below (wouldve made sense to do first)
+### adds columns "h" for shannon evenness and "s" for species richness to double check matrix work was solid
+### s and species_richness lines up, so makes sense - it worked :)
+
+evenness <- read_csv("local-data/evenness_metrics_for_join_in_stepseven.csv") |> 
+      mutate(rep = as.character(rep)) |> 
+      rename(species_evenness = H,
+             species_richness_test = S)
+
+df_total_sample_size <- df_total_sample |> 
+      left_join(evenness, by = c("year", "month", "day", "bay", "estuary", "gear_details", "rep", "zone", "subzone", "grid"))
+glimpse(df_total_sample_size)
 
 ### calculate everything annually ----
 
 df_annual_sample_size <- df_total_sample_size |> 
       group_by(bay, estuary, zone, grid, year, gear_details) |> 
       summarize(total_biomass_ann = mean(total_biomass_m2, na.rm = TRUE),
+                total_n_ann = mean(total_n, na.rm = TRUE),
                 species_richness_ann = mean(species_richness, na.rm = TRUE),
+                species_evenness_ann = mean(species_evenness, na.rm = TRUE),
                 max_size_ann = mean(max_size, na.rm = TRUE),
                 k_ann = mean(mean_k, na.rm = TRUE),
+                generation_time_ann = mean(mean_generation_time, na.rm = TRUE),
                 depth_max_ann = mean(mean_depth_max, na.rm = TRUE),
                 depth_min_ann = mean(mean_depth_min, na.rm = TRUE),
                 temp_min_ann = mean(mean_temp_pref_min, na.rm = TRUE),
                 temp_mean_ann = mean(mean_tem_pref_mean, na.rm = TRUE),
                 temp_max_ann = mean(mean_temp_pref_max, na.rm = TRUE),
-                troph_ann = mean(mean_troph, na.rm = TRUE))
-
-### generate some simple time series ----
-
-df_annual <- df_total |> 
-      group_by(bay, estuary, year, zone, gear_details) |> 
-      summarize(total_biomass_ann = mean(total_biomass_m2, na.rm = TRUE),
-                species_richness_ann = mean(species_richness, na.rm = TRUE),
-                max_size_ann = mean(max_size, na.rm = TRUE),
-                k_ann = mean(mean_k, na.rm = TRUE),
-                depth_max_ann = mean(mean_depth_max, na.rm = TRUE),
-                depth_min_ann = mean(mean_depth_min, na.rm = TRUE),
-                temp_min_ann = mean(mean_temp_pref_min, na.rm = TRUE),
-                temp_mean_ann = mean(mean_tem_pref_mean, na.rm = TRUE),
-                temp_max_ann = mean(mean_temp_pref_max, na.rm = TRUE),
-                troph_ann = mean(mean_troph, na.rm = TRUE))
+                troph_ann = mean(mean_troph, na.rm = TRUE),
+                benthic_prop_ann = mean(benthic_prop, na.rm = TRUE),
+                pelagic_prop_ann = mean(pelagic_prop, na.rm = TRUE))
 
 ### generate stability dataset ----
 
@@ -136,13 +146,17 @@ df_stability <- df_annual_sample_size |>
                 comm_bm_cv = (sd(total_biomass_ann, na.rm = TRUE) / mean(total_biomass_ann, na.rm = TRUE)),
                 comm_bm_stability = 1/comm_bm_cv,
                 comm_species_richness = mean(species_richness_ann, na.rm = TRUE),
+                comm_species_evenness = mean(species_evenness_ann, na.rm = TRUE),
                 comm_max_size = mean(max_size_ann, na.rm = TRUE),
                 comm_k = mean(k_ann, na.rm = TRUE),
+                comm_generation_time = mean(generation_time_ann, na.rm = TRUE),
                 comm_depth_min = mean(depth_min_ann, na.rm = TRUE),
                 comm_depth_max = mean(depth_max_ann, na.rm = TRUE),
                 comm_temp_mean = mean(temp_mean_ann, na.rm = TRUE),
                 comm_temp_min = mean(temp_min_ann, na.rm = TRUE),
-                comm_temp_max = mean(temp_max_ann, na.rm = TRUE)) |> 
+                comm_temp_max = mean(temp_max_ann, na.rm = TRUE),
+                comm_benthic_prop = mean(benthic_prop_ann, na.rm = TRUE),
+                comm_pelagic_prop = mean(pelagic_prop_ann, na.rm = TRUE)) |> 
       left_join(low_obs_flag, by = c("bay", "estuary","zone", "grid", "gear_details"))
 
 ### check to make sure sample size doesn't have strong, significant relationship
@@ -250,7 +264,7 @@ df_stability |>
 
 # write_csv(df_stability, "local-data/stability-model-data-012025.csv")
 
-df_total |> 
+df_total_sample_size |> 
       mutate(gear_estuary = paste(gear_details, estuary, sep = "_")) |> 
       group_by(date, gear_estuary) |> 
       mutate(mean = mean(total_biomass_m2, na.rm = TRUE)) |> 
@@ -267,7 +281,7 @@ df_total |>
             # legend.title = element_text(size = 12, color = "black", face = 'bold'),
             panel.background = element_rect(fill = "white"))
 
-df_total |> 
+df_total_sample_size |> 
       mutate(gear_estuary = paste(gear_details, estuary, sep = "_")) |> 
       group_by(year, gear_estuary) |> 
       mutate(mean = mean(total_biomass_m2, na.rm = TRUE)) |> 
