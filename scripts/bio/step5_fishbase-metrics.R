@@ -9,7 +9,7 @@
 ### load necessary libraries ---
 # install.packages("librarian")
 librarian::shelf(tidyverse, readxl, dplyr, stringr, splitstackshape, purrr, 
-                 zoo, pracma, rfishbase)
+                 zoo, pracma, rfishbase, readr)
 
 ### set simple workflow functions ---
 nacheck <- function(df) {
@@ -22,6 +22,11 @@ nacheck <- function(df) {
 spp <- read_xlsx('local-data/archive/forage_fish_trait_list.xlsx') |> 
       janitor::clean_names() |> 
       select(scientific_name, common_name, family, genus, specific_epithet)
+
+hers <- read_csv("local-data/trait-data/fish-traits-HERS.csv") |> 
+      janitor::clean_names() |> 
+      select(species, generation_time) |> 
+      rename(scientific_name = species)
 
 # test <- rfishbase::diet(spp$scientific_name)
 # test1 <- rfishbase::diet_items(spp$scientific_name)
@@ -54,10 +59,11 @@ ests <- rfishbase::estimate(spp$scientific_name) |>
              ppr_min, ppr_max, temp_pref_min, temp_pref_mean, temp_pref_max,
              tl_max, sl_max)
 
-test <- rfishbase::ecology(spp$scientific_name)
+ests_1 <- ests |> 
+      left_join(hers, by = "scientific_name")
 
 spp_ests <- spp |> 
-      left_join(ests, by = "scientific_name") |> 
+      left_join(ests_1, by = "scientific_name") |> 
       group_by(genus) |> 
       mutate(across(where(is.numeric),
             ~ifelse(is.na(.), mean(., na.rm = TRUE), .))) |> 
@@ -67,6 +73,41 @@ spp_ests <- spp |>
                     ~ifelse(is.na(.), mean(., na.rm = TRUE), .))) |> 
       ungroup() |> 
       mutate(across(where(is.numeric),
-                    ~ifelse(is.nan(.), NA, .)))
+                    ~ifelse(is.nan(.), NA, .))) |> 
+      mutate(across(where(is.numeric),
+                    ~ifelse(is.na(.), mean(., na.rm = TRUE), .))) |> 
+      select(-l_inf)
 
-writexl::write_xlsx(spp_ests, "local-data/forage_fish_trait_list_v2.xlsx")
+dom_feeding_path <- spp_ests |> 
+      filter(!is.na(feeding_path)) |> 
+      group_by(genus, feeding_path) |> 
+      summarize(count = n()) |> 
+      ungroup() |> 
+      group_by(genus) |> 
+      slice_max(count, n=1, with_ties = FALSE) |> 
+      select(genus, feeding_path)
+
+spp_ests_filled <- spp_ests |> 
+      left_join(dom_feeding_path, by = "genus", suffix = c("", "_dominant")) |> 
+      mutate(feeding_path = ifelse(is.na(feeding_path), feeding_path_dominant, feeding_path)) |> 
+      select(-feeding_path_dominant)
+
+dom_feeding_path1 <- spp_ests_filled |> 
+      filter(!is.na(feeding_path)) |> 
+      group_by(family, feeding_path) |> 
+      summarize(count = n()) |> 
+      ungroup() |> 
+      group_by(family) |> 
+      slice_max(count, n=1, with_ties = FALSE) |> 
+      select(family, feeding_path)
+
+spp_ests_filled1 <- spp_ests_filled |> 
+      left_join(dom_feeding_path1, by = "family", suffix = c("", "_dominant")) |> 
+      mutate(feeding_path = ifelse(is.na(feeding_path), feeding_path_dominant, feeding_path)) |> 
+      select(-feeding_path_dominant)
+
+nacheck(spp_ests_filled1)
+
+# writexl::write_xlsx(spp_ests, "local-data/forage_fish_trait_list_v2.xlsx")
+writexl::write_xlsx(spp_ests_filled1, "local-data/forage_fish_trait_list_filled.xlsx")
+write_csv(spp_ests_filled1, "local-data/key-datasets/ff_traits_filled.csv")

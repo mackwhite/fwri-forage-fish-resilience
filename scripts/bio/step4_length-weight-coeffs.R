@@ -17,7 +17,7 @@ nacheck <- function(df) {
 }
 
 ### read in necessary data ---
-dat <- read_rds('local-data/fim-master-short.RDS') |> 
+dat <- read_rds('local-data/archive/fim-master-short.RDS') |> 
       ### can't take the camel case and capital letters anymore
       janitor::clean_names() |> 
       mutate(taxon_group = case_when(
@@ -35,8 +35,8 @@ dat <- read_rds('local-data/fim-master-short.RDS') |>
       rename(common_name = commonname, 
              scientific_name = scientificname)
 glimpse(dat)
-lw_data <- read_rds('local-data/Lengthweight.RDS') 
-spp_codes <- read_rds('local-data/Species_Codes.RDS')
+lw_data <- read_rds('local-data/archive/Lengthweight.RDS') 
+spp_codes <- read_rds('local-data/archive/Species_Codes.RDS')
 
 ### add area and remove useless seining data ---
 dat1 <- dat |> 
@@ -280,7 +280,7 @@ comm_bm |>
       geom_line(linewidth = 1.5) +
       facet_wrap(~zone, scales = "free")
 
-ts_flags <- read_csv("local-data/flag_report_ts_zones.csv")
+ts_flags <- read_csv("local-data/archive/flag_report_ts_zones.csv")
 
 dat6 <- dat5 |> 
       left_join(ts_flags, by = c("bay", "zone")) |> 
@@ -383,7 +383,7 @@ forage_fish_filtered <- dat8 |>
       filter(forage_fish == "forage fish") |> 
       select(-forage_fish)
 
-# write_rds(forage_fish_filtered, "local-data/forage_fish_master.RDS")
+write_rds(forage_fish_filtered, "local-data/forage_fish_master1.RDS")
 
 forage_fish_list <- forage_fish_filtered |> 
       group_by(common_name, scientific_name) |> 

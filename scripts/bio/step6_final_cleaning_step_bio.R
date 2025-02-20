@@ -22,10 +22,9 @@ nacheck <- function(df) {
 tbl_corp_hydrolab <- read_rds('local-data/archive/Hydro.RDS') |> 
       select(-Flag) |> 
       janitor::clean_names()
-bio <- read_rds("local-data/forage_fish_master.RDS") |> 
+bio <- read_rds("local-data/forage_fish_master1.RDS") |> 
       select(-mean_weight_g, -min_weight_g, -max_weight_g, -tot_n, -lw_a, -lw_b, -lw_r2)
-traits <- read_csv("local-data/forage_fish_trait_list_v2.csv") |> 
-      select(-l_inf)
+traits <- read_csv("local-data/key-datasets/ff_traits_filled.csv")
 
 df <- bio |> left_join(traits, by = c("common_name", "scientific_name")) |> 
       mutate(mean_length_cm = mean_length/10,
@@ -46,18 +45,18 @@ df <- bio |> left_join(traits, by = c("common_name", "scientific_name")) |>
              min_weight_g = a * min_length_cm^b,
              max_weight_g = a * max_length_cm^b)
 
-df_phys <- df |> left_join(tbl_corp_hydrolab, by = "reference") |>  distinct() |> 
-      rename(ph = p_h,
-             do2 = dissolved_o2,
-             temp_c = temperature, 
-             sal_ppt = salinity,
-             cond = conductivity) |> 
-      select(-beg_end)
-glimpse(df_phys)
-df <- df_phys
-rm(bio, df ,df_phys, tbl_corp_hydrolab, traits)
+# df_phys <- df |> left_join(tbl_corp_hydrolab, by = "reference") |>  distinct() |> 
+#       rename(ph = p_h,
+#              do2 = dissolved_o2,
+#              temp_c = temperature, 
+#              sal_ppt = salinity,
+#              cond = conductivity) |> 
+#       dplyr::select(-beg_end)
+# glimpse(df_phys)
+# df <- df_phys
+# rm(bio ,df_phys, tbl_corp_hydrolab, traits)
 
-# write_rds(df, "local-data/forage_fish_master.RDS")
+write_rds(df, "local-data/key-datasets/forage_fish_master.RDS")
 
 # comm_bm <- df |> 
 #       group_by(bay, gear_details, year, month, zone, subzone, grid) |> 
@@ -89,4 +88,3 @@ rm(bio, df ,df_phys, tbl_corp_hydrolab, traits)
 #             panel.grid.minor = element_blank(),
 #             panel.border = element_blank(),
 #             panel.background = element_blank())
-
