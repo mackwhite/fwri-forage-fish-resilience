@@ -311,7 +311,6 @@ df_total |>
 # read out files for moving forward ---------------------------------------
 
 ### community-level data for each sampling event ----
-
 write_csv(df_total_sample_size, "local-data/key-datasets/discrete-community-timeseries.csv")
 
 ### summarized community-level data at annual timescale ----
