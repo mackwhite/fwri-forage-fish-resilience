@@ -8,7 +8,7 @@
 
 ### load necessary libraries ---
 # install.packages("librarian")
-librarian::shelf(tidyverse, readxl, dplyr, stringr, splitstackshape, purrr, 
+librarian::shelf(tidyverse, readr, readxl, dplyr, stringr, splitstackshape, purrr, 
                  zoo, pracma)
 
 ### set simple workflow functions ---
@@ -19,7 +19,7 @@ nacheck <- function(df) {
 
 ### read in necessary data ---
 
-tbl_corp_hydrolab <- read_rds('local-data/Hydro.RDS') |> 
+tbl_corp_hydrolab <- read_rds('local-data/archive/Hydro.RDS') |> 
       select(-Flag) |> 
       janitor::clean_names()
 bio <- read_rds("local-data/forage_fish_master.RDS") |> 

@@ -8,7 +8,7 @@
 
 ### load necessary libraries ---
 # install.packages("librarian")
-librarian::shelf(tidyverse, FSA, forcats, multcompView, readxl, dplyr, splitstackshape, purrr, zoo, pracma, vegan, e1071)
+librarian::shelf(tidyverse, FSA, readr, forcats, multcompView, readxl, dplyr, splitstackshape, purrr, zoo, pracma, vegan, e1071)
 
 ### set simple workflow functions ---
 nacheck <- function(df) {
@@ -82,7 +82,7 @@ table <- df_total |>
                 grids = n_distinct(grid))
 
 low_obs_flag <- df_total |> 
-      group_by(bay, estuary, zone, grid) |> 
+      group_by(bay, estuary, zone, grid, gear_details) |> 
       summarize(total_obs = n_distinct(date),
                 flag = case_when(
                       total_obs <= 50 ~ "remove",
@@ -92,14 +92,14 @@ low_obs_flag <- df_total |>
 ### filter out sites with low sample sizes ----
 
 df_total_sample_size <- df_total |> 
-      left_join(low_obs_flag, by = c("bay", "estuary","zone", "grid")) |> 
-      filter(flag == "keep") |> 
+      left_join(low_obs_flag, by = c("bay", "estuary","zone", "grid", "gear_details")) |> 
+      # filter(flag == "keep") |> 
       select(-flag)
 
 ### calculate everything annually ----
 
 df_annual_sample_size <- df_total_sample_size |> 
-      group_by(bay, estuary, zone, grid, year) |> 
+      group_by(bay, estuary, zone, grid, year, gear_details) |> 
       summarize(total_biomass_ann = mean(total_biomass_m2, na.rm = TRUE),
                 species_richness_ann = mean(species_richness, na.rm = TRUE),
                 max_size_ann = mean(max_size, na.rm = TRUE),
@@ -114,7 +114,7 @@ df_annual_sample_size <- df_total_sample_size |>
 ### generate some simple time series ----
 
 df_annual <- df_total |> 
-      group_by(bay, estuary, year, zone) |> 
+      group_by(bay, estuary, year, zone, gear_details) |> 
       summarize(total_biomass_ann = mean(total_biomass_m2, na.rm = TRUE),
                 species_richness_ann = mean(species_richness, na.rm = TRUE),
                 max_size_ann = mean(max_size, na.rm = TRUE),
@@ -129,7 +129,7 @@ df_annual <- df_total |>
 ### generate stability dataset ----
 
 df_stability <- df_annual_sample_size |> 
-      group_by(bay, estuary, zone, grid) |> 
+      group_by(bay, estuary, zone, grid, gear_details) |> 
       summarize(comm_bm_mean = mean(total_biomass_ann, na.rm = TRUE),
                 comm_bm_sd = sd(total_biomass_ann, na.rm = TRUE),
                 comm_bm_cv = (sd(total_biomass_ann, na.rm = TRUE) / mean(total_biomass_ann, na.rm = TRUE)),
@@ -142,7 +142,7 @@ df_stability <- df_annual_sample_size |>
                 comm_temp_mean = mean(temp_mean_ann, na.rm = TRUE),
                 comm_temp_min = mean(temp_min_ann, na.rm = TRUE),
                 comm_temp_max = mean(temp_max_ann, na.rm = TRUE)) |> 
-      left_join(low_obs_flag, by = c("bay", "estuary","zone", "grid"))
+      left_join(low_obs_flag, by = c("bay", "estuary","zone", "grid", "gear_details"))
 
 ### check to make sure sample size doesn't have strong, significant relationship
 lm_model <- lm(comm_bm_stability ~ total_obs, data = df_stability)
@@ -183,6 +183,7 @@ df_stability |>
       geom_jitter(aes(color = estuary), shape = 16, size = 2, width = 0.2, alpha = 1.0)+
       geom_boxplot(outlier.shape = NA, alpha = 0.35) +      
       scale_fill_manual(values = estuary_palette) +
+      facet_wrap(~gear_details) +
       labs(x = "Total Observations (#)", y = "Forage Fish Biomass Stability (1/CV)") +
       # scale_x_continuous(breaks = c(50,60,70,80,90,100,110,120)) +
       scale_y_continuous(breaks = c(0.0,0.5,1.0,1.5,2.0,2.5)) +
