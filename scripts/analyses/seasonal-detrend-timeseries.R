@@ -8,7 +8,7 @@
 
 ### load necessary libraries ---
 # install.packages("librarian")
-librarian::shelf(tidyverse, tsibble, zoo, forecast, FSA, readr, forcats)
+librarian::shelf(tidyverse, readr, tsibble, zoo, forecast, strucchange)
 
 ### set simple workflow functions ---
 nacheck <- function(df) {
