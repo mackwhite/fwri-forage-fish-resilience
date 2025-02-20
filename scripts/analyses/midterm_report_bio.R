@@ -86,15 +86,16 @@ low_obs_flag <- df_total |>
       summarize(total_obs = n_distinct(date),
                 flag = case_when(
                       total_obs <= 50 ~ "remove",
-                      total_obs >= 125 ~ "remove",
+                      total_obs >= 150 ~ "remove",
                       TRUE ~ "keep"))
 
 ### filter out sites with low sample sizes ----
 
 df_total_sample_size <- df_total |> 
       left_join(low_obs_flag, by = c("bay", "estuary","zone", "grid", "gear_details")) |> 
-      # filter(flag == "keep") |> 
-      select(-flag)
+      # filter(flag == "keep") |>
+      select(-flag) |> 
+      filter(year >= 1996)
 
 ### calculate everything annually ----
 
@@ -306,4 +307,15 @@ df_total |>
 ### 21.3 m seines gear would exclude tequesta
 ### tampa effects of seagrass restoration
 ### some really standout hydro years in the late 90s on west coast
-      
+
+# read out files for moving forward ---------------------------------------
+
+### community-level data for each sampling event ----
+
+write_csv(df_total_sample_size, "local-data/key-datasets/discrete-community-timeseries.csv")
+
+### summarized community-level data at annual timescale ----
+write_csv(df_annual_sample_size, "local-data/key-datasets/annual-community-timeseries.csv")
+
+### summarized community-level data at period-of-record timescale ----
+write_csv(df_stability, "local-data/key-datasets/community-biomass-stability.csv")
