@@ -8,7 +8,8 @@
 
 ### load necessary libraries ---
 # install.packages("librarian")
-librarian::shelf(tidyverse, readr, tsibble, zoo, forecast, strucchange)
+librarian::shelf(tidyverse, readr, tsibble, zoo, forecast, strucchange,
+                 performance, ggeffects, lsmeans, emmeans, ggpubr, visreg)
 
 ### set simple workflow functions ---
 nacheck <- function(df) {
@@ -62,14 +63,14 @@ detrend <- function(df) {
       return(df)
 }
 
-small_seine_detrended <- small_seine_zone_df |> 
+ss_detrended <- small_seine_zone_df |> 
       group_by(estuary, zone) |> 
       group_split() |> 
       lapply(detrend) |> 
       bind_rows()
 
 ### checking out how seasonality was handled ---
-small_seine_detrended |> 
+ss_detrended |> 
       filter(estuary == "Apalachicola Bay", zone == "A") |> 
       ggplot(aes(x=date)) +
       geom_line(aes(y = bm_m2, color = "Original bm_m2"), size = 1) +
