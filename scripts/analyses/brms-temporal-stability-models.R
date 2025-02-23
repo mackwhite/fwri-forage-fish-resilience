@@ -43,49 +43,125 @@ corrplot(matrix, method = "number", type = "lower", tl.col = "black", tl.srt = 4
 df <- dat_scaled |> 
       rename_with(~gsub("comm_", "", .x), everything())
 glimpse(df)
+
+### clean up env ---
+rm(list = setdiff(ls(), c("dat", "df", "pr")))
+
 ### full models ----
 ### round one ----
 m1 <- brm(stability ~ species_richness + (species_richness|estuary),
-          data = df, prior = pr, warmup = 1000, iter = 10000, chains = 4)
+          data = df, prior = pr, warmup = 100, iter = 1000, chains = 4)
 
 m2 <- brm(stability ~ species_evenness + (species_evenness|estuary),
-          data = df, prior = pr, warmup = 1000, iter = 10000, chains = 4)
+          data = df, prior = pr, warmup = 100, iter = 1000, chains = 4)
 
 m3 <- brm(stability ~ max_size + (max_size|estuary),
-          data = df, prior = pr, warmup = 1000, iter = 10000, chains = 4)
+          data = df, prior = pr, warmup = 100, iter = 1000, chains = 4)
 
 m4 <- brm(stability ~ k + (k|estuary),
-          data = df, prior = pr, warmup = 1000, iter = 10000, chains = 4)
+          data = df, prior = pr, warmup = 100, iter = 1000, chains = 4)
 
 m5 <- brm(stability ~ generation_time + (generation_time|estuary),
-          data = df, prior = pr, warmup = 1000, iter = 10000, chains = 4)
+          data = df, prior = pr, warmup = 100, iter = 1000, chains = 4)
 
 m6 <- brm(stability ~ depth_min + (depth_min|estuary),
-          data = df, prior = pr, warmup = 1000, iter = 10000, chains = 4)
+          data = df, prior = pr, warmup = 100, iter = 1000, chains = 4)
 
 m7 <- brm(stability ~ depth_max + (depth_max|estuary),
-          data = df, prior = pr, warmup = 1000, iter = 10000, chains = 4)
+          data = df, prior = pr, warmup = 100, iter = 1000, chains = 4)
 
 m8 <- brm(stability ~ temp_min + (temp_min|estuary),
-          data = df, prior = pr, warmup = 1000, iter = 10000, chains = 4)
+          data = df, prior = pr, warmup = 100, iter = 1000, chains = 4)
 
 m9 <- brm(stability ~ temp_max + (temp_max|estuary),
-          data = df, prior = pr, warmup = 1000, iter = 10000, chains = 4)
+          data = df, prior = pr, warmup = 100, iter = 1000, chains = 4)
 
 m10 <- brm(stability ~ benthic_prop + (benthic_prop|estuary),
-          data = df, prior = pr, warmup = 1000, iter = 10000, chains = 4)
+          data = df, prior = pr, warmup = 100, iter = 1000, chains = 4)
 
-m11 <- brm(stability ~ pelagic_prop + (pelgic_prop|estuary),
-           data = df, prior = pr, warmup = 1000, iter = 10000, chains = 4)
+m11 <- brm(stability ~ pelagic_prop + (pelagic_prop|estuary),
+           data = df, prior = pr, warmup = 100, iter = 1000, chains = 4)
 
-model_table <- performance::compare_performance(m1,m2)
+model_table <- performance::compare_performance(m1,m2,m3,m4,m5,m6,m7,m8,m9,m10,m11)
 model_selection <- model_table |>
       mutate(dWAIC = WAIC - min(WAIC))
 
 ### clean environment ---
-rm(list = setdiff(ls(), c("dat", "df", 'm1')))
+rm(list = setdiff(ls(), c("dat", "df", 'm1', 'pr')))
 
 ### round two ----
+m1 <- brm(stability ~ species_richness + (species_richness|estuary),
+          data = df, prior = pr, warmup = 100, iter = 1000, chains = 4)
+
+### species richness and evenness highlight correlated, so it will be dropped from models moving forward
+
+m13 <- brm(stability ~ species_richness + max_size + (species_richness+max_size|estuary),
+          data = df, prior = pr, warmup = 100, iter = 1000, chains = 4)
+
+m14 <- brm(stability ~ species_richness + k + (species_richness+k|estuary),
+          data = df, prior = pr, warmup = 100, iter = 1000, chains = 4)
+
+m15 <- brm(stability ~ species_richness + generation_time + (species_richness+generation_time|estuary),
+          data = df, prior = pr, warmup = 100, iter = 1000, chains = 4)
+
+m16 <- brm(stability ~ species_richness + depth_min + (species_richness+depth_min|estuary),
+          data = df, prior = pr, warmup = 100, iter = 1000, chains = 4)
+
+m17 <- brm(stability ~ species_richness + depth_max + (species_richness+depth_max|estuary),
+          data = df, prior = pr, warmup = 100, iter = 1000, chains = 4)
+
+m18 <- brm(stability ~ species_richness + temp_min + (species_richness+temp_min|estuary),
+          data = df, prior = pr, warmup = 100, iter = 1000, chains = 4)
+
+m19 <- brm(stability ~ species_richness + temp_max + (species_richness+temp_max|estuary),
+          data = df, prior = pr, warmup = 100, iter = 1000, chains = 4)
+
+m110 <- brm(stability ~ species_richness + benthic_prop + (species_richness+benthic_prop|estuary),
+           data = df, prior = pr, warmup = 100, iter = 1000, chains = 4)
+
+m111 <- brm(stability ~ species_richness + pelagic_prop + (species_richness+pelagic_prop|estuary),
+           data = df, prior = pr, warmup = 100, iter = 1000, chains = 4)
+
+model_table <- performance::compare_performance(m1,m13,m14,m15,m16,m17,m18,m19,m110,m111)
+model_selection <- model_table |>
+      mutate(dWAIC = WAIC - min(WAIC))
+
+rm(list = setdiff(ls(), c("dat", "df", 'm17', 'pr')))
+
+### round three ----
+m173 <- brm(stability ~ species_richness + depth_max + max_size + (species_richness+depth_max+max_size|estuary),
+           data = df, prior = pr, warmup = 100, iter = 1000, chains = 4)
+
+m174 <- brm(stability ~ species_richness + depth_max + k + (species_richness+depth_max+k|estuary),
+           data = df, prior = pr, warmup = 100, iter = 1000, chains = 4)
+
+m175 <- brm(stability ~ species_richness + depth_max + generation_time + (species_richness+depth_max+generation_time|estuary),
+           data = df, prior = pr, warmup = 100, iter = 1000, chains = 4)
+
+m176 <- brm(stability ~ species_richness + depth_max + depth_min + (species_richness+depth_max+depth_min|estuary),
+           data = df, prior = pr, warmup = 100, iter = 1000, chains = 4)
+
+m17 <- brm(stability ~ species_richness + depth_max + (species_richness+depth_max|estuary),
+           data = df, prior = pr, warmup = 100, iter = 1000, chains = 4)
+
+m178 <- brm(stability ~ species_richness + depth_max + temp_min + (species_richness+depth_max+temp_min|estuary),
+           data = df, prior = pr, warmup = 100, iter = 1000, chains = 4)
+
+m179 <- brm(stability ~ species_richness + depth_max + temp_max + (species_richness+depth_max+temp_max|estuary),
+           data = df, prior = pr, warmup = 100, iter = 1000, chains = 4)
+
+m1710 <- brm(stability ~ species_richness + depth_max + benthic_prop + (species_richness+depth_max+benthic_prop|estuary),
+            data = df, prior = pr, warmup = 100, iter = 1000, chains = 4)
+
+m1711 <- brm(stability ~ species_richness + depth_max + pelagic_prop + (species_richness+depth_max+pelagic_prop|estuary),
+            data = df, prior = pr, warmup = 100, iter = 1000, chains = 4)
+
+model_table <- performance::compare_performance(m173,m174,m175,m176,m17,m178,m179,m1710,m1711)
+model_selection <- model_table |>
+      mutate(dWAIC = WAIC - min(WAIC))
+
+rm(list = setdiff(ls(), c("dat", "df", 'm176', 'pr')))
+
 
 ### save best overall model ----
 full_model <- m1
