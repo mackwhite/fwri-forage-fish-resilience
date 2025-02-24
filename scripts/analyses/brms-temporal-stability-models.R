@@ -162,15 +162,102 @@ model_selection <- model_table |>
 
 rm(list = setdiff(ls(), c("dat", "df", 'm176', 'pr')))
 
+### round four ----
+mm1763 <- brm(stability ~ species_richness + depth_max + depth_min + max_size + (species_richness+depth_max+depth_min+max_size|estuary),
+            data = df, prior = pr, warmup = 100, iter = 1000, chains = 4)
+
+mm1764 <- brm(stability ~ species_richness + depth_max + depth_min + k + (species_richness+depth_max+depth_min+k|estuary),
+            data = df, prior = pr, warmup = 100, iter = 1000, chains = 4)
+
+mm1765 <- brm(stability ~ species_richness + depth_max + depth_min + generation_time + (species_richness+depth_max+depth_min+generation_time|estuary),
+            data = df, prior = pr, warmup = 100, iter = 1000, chains = 4)
+
+mm1768 <- brm(stability ~ species_richness + depth_max + depth_min + temp_min + (species_richness+depth_max+depth_min+temp_min|estuary),
+            data = df, prior = pr, warmup = 100, iter = 1000, chains = 4)
+
+mm1769 <- brm(stability ~ species_richness + depth_max + depth_min + temp_max + (species_richness+depth_max+depth_min+temp_max|estuary),
+            data = df, prior = pr, warmup = 100, iter = 1000, chains = 4)
+
+mm17610 <- brm(stability ~ species_richness + depth_max + depth_min + benthic_prop + (species_richness+depth_max+depth_min+benthic_prop|estuary),
+             data = df, prior = pr, warmup = 100, iter = 1000, chains = 4)
+
+mm17611 <- brm(stability ~ species_richness + depth_max + depth_min + pelagic_prop + (species_richness+depth_max+depth_min+pelagic_prop|estuary),
+             data = df, prior = pr, warmup = 100, iter = 1000, chains = 4)
+
+model_table <- performance::compare_performance(mm1763,mm1764,mm1765,m176,mm1768,mm1769,mm17610,mm17611)
+model_selection <- model_table |>
+      mutate(dWAIC = WAIC - min(WAIC))
+
+rm(list = setdiff(ls(), c("dat", "df", 'mm1764', 'pr')))
+
+### round four ----
+mm17643 <- brm(stability ~ species_richness + depth_max + depth_min + k + max_size + (species_richness+depth_max+depth_min+k+max_size|estuary),
+              data = df, prior = pr, warmup = 100, iter = 1000, chains = 4)
+
+mm17645 <- brm(stability ~ species_richness + depth_max + depth_min + k + generation_time + (species_richness+depth_max+depth_min+k+generation_time|estuary),
+              data = df, prior = pr, warmup = 100, iter = 1000, chains = 4)
+
+mm17648 <- brm(stability ~ species_richness + depth_max + depth_min + k + temp_min + (species_richness+depth_max+depth_min+k+temp_min|estuary),
+              data = df, prior = pr, warmup = 100, iter = 1000, chains = 4)
+
+mm17649 <- brm(stability ~ species_richness + depth_max + depth_min + k + temp_max + (species_richness+depth_max+depth_min+k+temp_max|estuary),
+              data = df, prior = pr, warmup = 100, iter = 1000, chains = 4)
+
+mm176410 <- brm(stability ~ species_richness + depth_max + depth_min + k + benthic_prop + (species_richness+depth_max+depth_min+k+benthic_prop|estuary),
+               data = df, prior = pr, warmup = 100, iter = 1000, chains = 4)
+
+mm176411 <- brm(stability ~ species_richness + depth_max + depth_min + k + pelagic_prop + (species_richness+depth_max+depth_min+k+pelagic_prop|estuary),
+               data = df, prior = pr, warmup = 100, iter = 1000, chains = 4)
+
+model_table <- performance::compare_performance(mm17643,mm1764,mm17645,mm17648,mm17649,mm176410,mm176411)
+model_selection <- model_table |>
+      mutate(dWAIC = WAIC - min(WAIC))
+
+rm(list = setdiff(ls(), c("dat", "df", 'mm17649', 'pr')))
+
+### round five ----
+mm176493 <- brm(stability ~ species_richness + depth_max + depth_min + k + temp_max + max_size + (species_richness+depth_max+depth_min+k+temp_max+max_size|estuary),
+               data = df, prior = pr, warmup = 100, iter = 1000, chains = 4)
+
+mm176495 <- brm(stability ~ species_richness + depth_max + depth_min + k + temp_max + generation_time + (species_richness+depth_max+depth_min+k+temp_max+generation_time|estuary),
+               data = df, prior = pr, warmup = 100, iter = 1000, chains = 4)
+
+mm1764910 <- brm(stability ~ species_richness + depth_max + depth_min + k + temp_max + benthic_prop + (species_richness+depth_max+depth_min+k+temp_max+benthic_prop|estuary),
+                data = df, prior = pr, warmup = 100, iter = 1000, chains = 4)
+
+mm1764911 <- brm(stability ~ species_richness + depth_max + depth_min + k + temp_max + pelagic_prop + (species_richness+depth_max+depth_min+k+temp_max+pelagic_prop|estuary),
+                data = df, prior = pr, warmup = 100, iter = 1000, chains = 4)
+
+model_table <- performance::compare_performance(mm176493,mm176495,mm17649,mm1764910,mm1764911)
+model_selection <- model_table |>
+      mutate(dWAIC = WAIC - min(WAIC))
+
+rm(list = setdiff(ls(), c("dat", "df", 'mm1764910', 'pr')))
+
+### round six ----
+mm17649103 <- brm(stability ~ species_richness + depth_max + depth_min + k + temp_max + benthic_prop + max_size + (species_richness+depth_max+depth_min+k+temp_max+benthic_prop+max_size|estuary),
+                data = df, prior = pr, warmup = 100, iter = 1000, chains = 4)
+
+mm17649105 <- brm(stability ~ species_richness + depth_max + depth_min + k + temp_max + benthic_prop + generation_time + (species_richness+depth_max+depth_min+k+temp_max+benthic_prop+generation_time|estuary),
+                data = df, prior = pr, warmup = 100, iter = 1000, chains = 4)
+
+mm176491011 <- brm(stability ~ species_richness + depth_max + depth_min + k + temp_max + benthic_prop + pelagic_prop + (species_richness+depth_max+depth_min+k+temp_max+benthic_prop+pelagic_prop|estuary),
+                 data = df, prior = pr, warmup = 100, iter = 1000, chains = 4)
+
+model_table <- performance::compare_performance(mm17649103,mm17649105,mm1764910,mm176491011)
+model_selection <- model_table |>
+      mutate(dWAIC = WAIC - min(WAIC))
+
+rm(list = setdiff(ls(), c("dat", "df", 'mm1764910', 'pr')))
 
 ### save best overall model ----
-full_model <- m1
+full_model <- mm1764910
 full_model_re_slope <- mixedup::extract_random_coefs(full_model)
 full_model_re_slope_exp <- full_model_re_slope |>
       mutate(nozero = map2_lgl(lower_2.5, upper_97.5, \(x, y) between(0, x, y)))
 full_model_fe_slope <- mixedup::extract_fixed_effects(full_model)
 summary(full_model)
-# save(full_model, file = "output/ms-second-round/models/fullmodel.RData")
+# save(full_model, file = "models/full-brms-model.RData")
 
 # performance::performance(full_model)
 
@@ -234,6 +321,7 @@ mech_re <- full_model_re_slope |>
 mech_slopes <- rbind(mech_fe, mech_re)
 glimpse(mech_slopes)
 
+### species richness beta plot ----
 mech_slopes |> 
       mutate(group = case_when(
             group == "Cedar.Key" ~ "Cedar Key",
@@ -246,9 +334,9 @@ mech_slopes |>
             TRUE ~ group
       )) |> 
       mutate(group = factor(group,
-                            levels = c("Cedar Key", "Charlotte Harbor", "Apalachicola Bay",
-                                       "Northern Indian River", "Southern Indian River",
-                                       "Tampa Bay", "Northeast Florida", "Overall"))) |>
+                            levels = c("Cedar Key", "Charlotte Harbor", "Northern Indian River",
+                                       "Apalachicola Bay", "Southern Indian River",
+                                       "Northeast Florida", "Tampa Bay", "Overall"))) |>
             filter(effect == "species_richness") |>
             ggplot(aes(x = value, y = group, color = group)) +
             geom_point(size = 3) +
@@ -270,3 +358,198 @@ mech_slopes |>
                   legend.key = element_rect(fill = 'white'),
                   legend.text = element_text(face = "bold", color = "black", size = 12),
                   legend.title = element_text(face = "bold", color = "black", size = 14))
+
+### max depth beta plot ----
+mech_slopes |> 
+      mutate(group = case_when(
+            group == "Cedar.Key" ~ "Cedar Key",
+            group == "Charlotte.Harbor" ~ "Charlotte Harbor",
+            group == "Apalachicola.Bay" ~ "Apalachicola Bay",
+            group == "Northern.Indian.River" ~ "Northern Indian River",
+            group == "Southern.Indian.River" ~ "Southern Indian River",
+            group == "Tampa.Bay" ~ "Tampa Bay",
+            group == "Northeast.Florida" ~ "Northeast Florida",
+            TRUE ~ group
+      )) |> 
+      mutate(group = factor(group,
+                            levels = c("Northern Indian River", "Southern Indian River",
+                                       "Charlotte Harbor", "Tampa Bay", "Apalachicola Bay",
+                                       "Cedar Key", 
+                                       "Northeast Florida", "Overall"))) |>
+      filter(effect == "depth_max") |>
+      ggplot(aes(x = value, y = group, color = group)) +
+      geom_point(size = 3) +
+      geom_errorbarh(aes(xmin = lower_2.5, xmax = upper_97.5), size = 1, height = 0) +
+      geom_vline(xintercept = 0, size = 1) +
+      # scale_x_continuous(labels = function(x) sprintf("%.1f", x),
+      #                    limits = c(-1.1,0.3),
+      #                    breaks = seq(-0.9,0.3, by = 0.3)) +
+      labs(x = 'Maximum Depth Profile Beta', y = 'Estuary', color = "Estuary") +
+      theme_classic() +
+      scale_color_manual(values = estuary_palette) +
+      theme(axis.text.x = element_text(face = "bold", color = "black", size = 12),
+            axis.text.y = element_text(face = "bold", color = "black", size = 12),
+            axis.title.x = element_text(face = "bold", color = "black", size = 14),
+            # axis.title.y = element_text(face = "bold", color = "black", size = 14),
+            axis.title.y = element_blank(),
+            legend.position = "right",
+            legend.background = element_blank(),
+            legend.key = element_rect(fill = 'white'),
+            legend.text = element_text(face = "bold", color = "black", size = 12),
+            legend.title = element_text(face = "bold", color = "black", size = 14))
+
+### min depth beta plot ----
+mech_slopes |> 
+      mutate(group = case_when(
+            group == "Cedar.Key" ~ "Cedar Key",
+            group == "Charlotte.Harbor" ~ "Charlotte Harbor",
+            group == "Apalachicola.Bay" ~ "Apalachicola Bay",
+            group == "Northern.Indian.River" ~ "Northern Indian River",
+            group == "Southern.Indian.River" ~ "Southern Indian River",
+            group == "Tampa.Bay" ~ "Tampa Bay",
+            group == "Northeast.Florida" ~ "Northeast Florida",
+            TRUE ~ group
+      )) |> 
+      mutate(group = factor(group,
+                            levels = c("Northern Indian River", "Cedar Key", 
+                                       "Southern Indian River", "Apalachicola Bay",
+                                       "Northeast Florida", "Tampa Bay",
+                                       "Charlotte Harbor", "Overall"))) |>
+      filter(effect == "depth_min") |>
+      ggplot(aes(x = value, y = group, color = group)) +
+      geom_point(size = 3) +
+      geom_errorbarh(aes(xmin = lower_2.5, xmax = upper_97.5), size = 1, height = 0) +
+      geom_vline(xintercept = 0, size = 1) +
+      # scale_x_continuous(labels = function(x) sprintf("%.1f", x),
+      #                    limits = c(-1.1,0.3),
+      #                    breaks = seq(-0.9,0.3, by = 0.3)) +
+      labs(x = 'Minimum Depth Profile Beta', y = 'Estuary', color = "Estuary") +
+      theme_classic() +
+      scale_color_manual(values = estuary_palette) +
+      theme(axis.text.x = element_text(face = "bold", color = "black", size = 12),
+            axis.text.y = element_text(face = "bold", color = "black", size = 12),
+            axis.title.x = element_text(face = "bold", color = "black", size = 14),
+            # axis.title.y = element_text(face = "bold", color = "black", size = 14),
+            axis.title.y = element_blank(),
+            legend.position = "right",
+            legend.background = element_blank(),
+            legend.key = element_rect(fill = 'white'),
+            legend.text = element_text(face = "bold", color = "black", size = 12),
+            legend.title = element_text(face = "bold", color = "black", size = 14))
+
+### k beta plot ----
+mech_slopes |> 
+      mutate(group = case_when(
+            group == "Cedar.Key" ~ "Cedar Key",
+            group == "Charlotte.Harbor" ~ "Charlotte Harbor",
+            group == "Apalachicola.Bay" ~ "Apalachicola Bay",
+            group == "Northern.Indian.River" ~ "Northern Indian River",
+            group == "Southern.Indian.River" ~ "Southern Indian River",
+            group == "Tampa.Bay" ~ "Tampa Bay",
+            group == "Northeast.Florida" ~ "Northeast Florida",
+            TRUE ~ group
+      )) |> 
+      mutate(group = factor(group,
+                            levels = c("Northern Indian River", "Cedar Key",
+                                       "Tampa Bay", "Northeast Florida",
+                                       "Apalachicola Bay", "Southern Indian River", 
+                                       "Charlotte Harbor", "Overall"))) |>
+      filter(effect == "k") |>
+      ggplot(aes(x = value, y = group, color = group)) +
+      geom_point(size = 3) +
+      geom_errorbarh(aes(xmin = lower_2.5, xmax = upper_97.5), size = 1, height = 0) +
+      geom_vline(xintercept = 0, size = 1) +
+      # scale_x_continuous(labels = function(x) sprintf("%.1f", x),
+      #                    limits = c(-1.1,0.3),
+      #                    breaks = seq(-0.9,0.3, by = 0.3)) +
+      labs(x = 'Growth Rate (K) Beta', y = 'Estuary', color = "Estuary") +
+      theme_classic() +
+      scale_color_manual(values = estuary_palette) +
+      theme(axis.text.x = element_text(face = "bold", color = "black", size = 12),
+            axis.text.y = element_text(face = "bold", color = "black", size = 12),
+            axis.title.x = element_text(face = "bold", color = "black", size = 14),
+            # axis.title.y = element_text(face = "bold", color = "black", size = 14),
+            axis.title.y = element_blank(),
+            legend.position = "right",
+            legend.background = element_blank(),
+            legend.key = element_rect(fill = 'white'),
+            legend.text = element_text(face = "bold", color = "black", size = 12),
+            legend.title = element_text(face = "bold", color = "black", size = 14))
+
+### max temp beta plot ----
+mech_slopes |> 
+      mutate(group = case_when(
+            group == "Cedar.Key" ~ "Cedar Key",
+            group == "Charlotte.Harbor" ~ "Charlotte Harbor",
+            group == "Apalachicola.Bay" ~ "Apalachicola Bay",
+            group == "Northern.Indian.River" ~ "Northern Indian River",
+            group == "Southern.Indian.River" ~ "Southern Indian River",
+            group == "Tampa.Bay" ~ "Tampa Bay",
+            group == "Northeast.Florida" ~ "Northeast Florida",
+            TRUE ~ group
+      )) |> 
+      mutate(group = factor(group,
+                            levels = c("Tampa Bay", "Northern Indian River", 
+                                       "Charlotte Harbor", "Cedar Key",
+                                       "Apalachicola Bay", "Southern Indian River", 
+                                       "Northeast Florida", "Overall"))) |>
+      filter(effect == "temp_max") |>
+      ggplot(aes(x = value, y = group, color = group)) +
+      geom_point(size = 3) +
+      geom_errorbarh(aes(xmin = lower_2.5, xmax = upper_97.5), size = 1, height = 0) +
+      geom_vline(xintercept = 0, size = 1) +
+      # scale_x_continuous(labels = function(x) sprintf("%.1f", x),
+      #                    limits = c(-1.1,0.3),
+      #                    breaks = seq(-0.9,0.3, by = 0.3)) +
+      labs(x = 'Maximum Temperature Profile Beta', y = 'Estuary', color = "Estuary") +
+      theme_classic() +
+      scale_color_manual(values = estuary_palette) +
+      theme(axis.text.x = element_text(face = "bold", color = "black", size = 12),
+            axis.text.y = element_text(face = "bold", color = "black", size = 12),
+            axis.title.x = element_text(face = "bold", color = "black", size = 14),
+            # axis.title.y = element_text(face = "bold", color = "black", size = 14),
+            axis.title.y = element_blank(),
+            legend.position = "right",
+            legend.background = element_blank(),
+            legend.key = element_rect(fill = 'white'),
+            legend.text = element_text(face = "bold", color = "black", size = 12),
+            legend.title = element_text(face = "bold", color = "black", size = 14))
+
+### benthic proportion beta plot ----
+mech_slopes |> 
+      mutate(group = case_when(
+            group == "Cedar.Key" ~ "Cedar Key",
+            group == "Charlotte.Harbor" ~ "Charlotte Harbor",
+            group == "Apalachicola.Bay" ~ "Apalachicola Bay",
+            group == "Northern.Indian.River" ~ "Northern Indian River",
+            group == "Southern.Indian.River" ~ "Southern Indian River",
+            group == "Tampa.Bay" ~ "Tampa Bay",
+            group == "Northeast.Florida" ~ "Northeast Florida",
+            TRUE ~ group
+      )) |> 
+      mutate(group = factor(group,
+                            levels = c("Tampa Bay", "Charlotte Harbor", 
+                                       "Northeast Florida", "Apalachicola Bay",
+                                       "Cedar Key","Southern Indian River",
+                                       "Northern Indian River", "Overall"))) |>
+      filter(effect == "benthic_prop") |>
+      ggplot(aes(x = value, y = group, color = group)) +
+      geom_point(size = 3) +
+      geom_errorbarh(aes(xmin = lower_2.5, xmax = upper_97.5), size = 1, height = 0) +
+      geom_vline(xintercept = 0, size = 1) +
+      # scale_x_continuous(labels = function(x) sprintf("%.1f", x),
+      #                    limits = c(-1.1,0.3),
+      #                    breaks = seq(-0.9,0.3, by = 0.3)) +
+      labs(x = 'Benthic Proportion Beta', y = 'Estuary', color = "Estuary") +
+      theme_classic() +
+      scale_color_manual(values = estuary_palette) +
+      theme(axis.text.x = element_text(face = "bold", color = "black", size = 12),
+            axis.text.y = element_text(face = "bold", color = "black", size = 12),
+            axis.title.x = element_text(face = "bold", color = "black", size = 14),
+            # axis.title.y = element_text(face = "bold", color = "black", size = 14),
+            axis.title.y = element_blank(),
+            legend.position = "right",
+            legend.background = element_blank(),
+            legend.key = element_rect(fill = 'white'),
+            legend.text = element_text(face = "bold", color = "black", size = 12),
+            legend.title = element_text(face = "bold", color = "black", size = 14))
