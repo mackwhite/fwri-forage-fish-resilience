@@ -47,6 +47,12 @@ hers <- read_csv("local-data/trait-data/fish-traits-HERS.csv") |>
 # test <- lm(join$troph1 ~ join$Troph)
 # summary(test)
 
+test <- rfishbase::ecology(spp$scientific_name) |> 
+      janitor::clean_names()
+
+selection <- test |> 
+      select(neritic:lakes, soft_bottom:gravel, macrophyte:reef_flats)
+
 ests <- rfishbase::estimate(spp$scientific_name) |> 
       janitor::clean_names() |> 
       rename(scientific_name = species,
