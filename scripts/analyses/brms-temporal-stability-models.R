@@ -258,7 +258,7 @@ full_model_re_slope_exp <- full_model_re_slope |>
 full_model_fe_slope <- mixedup::extract_fixed_effects(full_model)
 summary(full_model)
 # save(full_model, file = "models/full-brms-model.RData")
-
+load('models/full-brms-model.RData')
 # performance::performance(full_model)
 
 ### visualize model results ----
