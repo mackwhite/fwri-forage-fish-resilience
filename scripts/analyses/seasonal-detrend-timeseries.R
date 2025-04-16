@@ -67,7 +67,11 @@ ss_detrended <- small_seine_zone_df |>
       group_by(estuary, zone) |> 
       group_split() |> 
       lapply(detrend) |> 
-      bind_rows()
+      bind_rows() |> 
+      arrange(est_zone, date) |> 
+      group_by(est_zone) |> 
+      mutate(n = n()) |> 
+      ungroup()
 
 ### checking out how seasonality was handled ---
 ss_detrended |> 
@@ -81,7 +85,18 @@ ss_detrended |>
            color = "Legend") +
       theme_minimal()
 
-### generate function to visualize sesonality for each estuary-zone combination ----
+ss_detrended |> 
+      filter(estuary == "Apalachicola Bay", zone == "C") |> 
+      ggplot(aes(x=date)) +
+      geom_line(aes(y = bm_m2, color = "Original bm_m2"), size = 1) +
+      geom_line(aes(y = detrended_bm_m2, color = "Detrended bm_m2"), size = 1, linetype = "dashed") +
+      labs(title = "Comparison of Original and Detrended Biomass",
+           x = "Date",
+           y = "Biomass (bm_m2)",
+           color = "Legend") +
+      theme_minimal()
+
+### generate function to visualize seasonality for each estuary-zone combination ----
 
 seasonality <- function(df) {
       # arrange everything by data
@@ -117,10 +132,13 @@ ss_seasonal <- ss_detrended |>
 ss_seasonal |> 
       filter(estuary == "Apalachicola Bay", zone == "A", year == 2010) |> 
       ggplot(aes(x=date, y = seasonal_bm_m2)) +
-      geom_line(size = 1) +
+      geom_line(size = 1.5, color = "black", linetype = "dotted") +
+      geom_smooth(size = 2) +
       labs(title = "Seasonal Component of Biomass",
            x = "Date",
            y = "Biomass (m2)") +
       theme_minimal()
+
+write_csv(ss_seasonal, "local-data/detrended-zone-biomass-ts.csv")
 
 ### notes - data really isn't there for some of the sites - especially true with haul seine data

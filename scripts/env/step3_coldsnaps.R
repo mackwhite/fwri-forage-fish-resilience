@@ -288,13 +288,21 @@ nacheck(coldsnap3)
 glimpse(coldsnap3)
 
 coldsnap_severity <- coldsnap1 |> 
-      left_join(coldsnap3, by = c("bay", "estuary", "coldsnap_event_id", "duration"))
-
+      left_join(coldsnap3, by = c("bay", "estuary", "coldsnap_event_id", "duration")) |> 
+      mutate(start_year = year(start_date),
+             start_month = month(start_date)) |> 
+      filter(start_year >= 1995) |> 
+      filter(flag %in% c('Extreme', 'Significant', 'Severe'))
+      
 coldsnap_severity2 <- coldsnap2 |> 
-      left_join(coldsnap3, by = c("bay", "estuary", "coldsnap_event_id", "duration"))
+      left_join(coldsnap3, by = c("bay", "estuary", "coldsnap_event_id", "duration")) |> 
+      mutate(start_year = year(start_date),
+             start_month = month(start_date)) |> 
+      filter(start_year >= 1995) |> 
+      filter(flag %in% c('Extreme', 'Significant', 'Severe'))
 
-# write_csv(coldsnap_severity, 'local-data/marine-cold-snap-timeseries.csv')
-# write_csv(coldsnap_severity2, 'local-data/marine-cold-snap-severity.csv')
+write_csv(coldsnap_severity, 'local-data/marine-cold-snap-timeseries.csv')
+write_csv(coldsnap_severity2, 'local-data/marine-cold-snap-severity.csv')
 
 coldsnap_severity2 |> 
       ggplot(aes(x=auc_90, y=cum_anomaly)) +

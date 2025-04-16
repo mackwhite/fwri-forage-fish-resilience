@@ -282,16 +282,25 @@ mhw3 <- mhw2 |>
             auc >= auc_90 ~ "Significant",
             TRUE ~ "Moderate"
       )) |> 
-      ungroup()
+      ungroup() |> 
+      distinct()
 
 nacheck(mhw3)
 glimpse(mhw3)
 
 mhw_severity <- mhw1 |> 
-      left_join(mhw3, by = c("bay", "estuary", "mhw_event_id", "duration"))
+      left_join(mhw3, by = c("bay", "estuary", "mhw_event_id", "duration")) |> 
+      mutate(start_year = year(start_date),
+             start_month = month(start_date)) |> 
+      filter(start_year >= 1995) |> 
+      filter(flag %in% c('Extreme', 'Significant', 'Severe'))
 
 mhw_severity2 <- mhw2 |> 
-      left_join(mhw3, by = c("bay", "estuary", "mhw_event_id", "duration"))
+      left_join(mhw3, by = c("bay", "estuary", "mhw_event_id", "duration")) |> 
+      mutate(start_year = year(start_date),
+             start_month = month(start_date)) |> 
+      filter(start_year >= 1995) |> 
+      filter(flag %in% c('Extreme', 'Significant', 'Severe'))
 
-# write_csv(mhw_severity, 'local-data/marine-heat-wave-timeseries.csv')
-# write_csv(mhw_severity2, 'local-data/marine-heat-wave-severity.csv')
+write_csv(mhw_severity, 'local-data/marine-heat-wave-timeseries.csv')
+write_csv(mhw_severity2, 'local-data/marine-heat-wave-severity.csv')
