@@ -8,7 +8,7 @@
 
 ### load necessary libraries ---
 # install.packages("librarian")
-librarian::shelf(tidyverse, readxl, dplyr, splitstackshape, purrr, zoo, pracma)
+librarian::shelf(tidyverse, readxl, dplyr, splitstackshape, purrr, zoo, pracma, broom)
 
 ### set simple workflow functions ---
 nacheck <- function(df) {
@@ -130,3 +130,93 @@ glimpse(all2)
 
 all3 <- all2 |> 
       mutate(resistance = log(dist_detrended_bm_m2/cont_detrended_bm_m2))
+
+resilience0 <- all |> 
+      arrange(estuary, zone, simple_date) |> 
+      group_by(estuary, zone, dist_id) |> 
+      group_split() |> 
+      map_dfr(function(sub_df) {
+            extreme_dates <- sub_df |> 
+                  filter(!is.na(flag)) |> 
+                  pull(simple_date)
+            
+            if (length(extreme_dates) < 2) return(NULL)
+            
+            map_dfr(seq_len(length(extreme_dates) -1), function(i) {
+                  start_date <- extreme_dates[i]
+                  end_date <- extreme_dates[i+1]
+                  
+                  data_interval <- sub_df |> 
+                        filter(simple_date >= start_date & simple_date <= end_date)
+                  
+                  if (nrow(data_interval) < 2) return(NULL)
+                      
+                  model<- lm(detrended_bm_m2 ~ simple_date, data = data_interval)
+                  
+                  tidy(model) |> 
+                        mutate(
+                              estuary = unique(sub_df$estuary),
+                              zone = unique(sub_df$zone),
+                              start_date = start_date,
+                              end_date = end_date,
+                              n_obs = nrow(data_interval)
+                        )
+            })
+      })
+
+resilience_all_flags <- all |> 
+      arrange(estuary, zone, simple_date) |> 
+      group_by(estuary, zone) |> 
+      group_split() |> 
+      map_dfr(function(sub_df) {
+            flagged_dates <- sub_df |> 
+                  filter(!is.na(flag)) |> 
+                  pull(simple_date)
+            
+            if (length(flagged_dates) < 2) return(NULL)
+            
+            map_dfr(seq_len(length(flagged_dates) - 1), function(i) {
+                  start_date <- flagged_dates[i]
+                  end_date <- flagged_dates[i + 1]
+                  
+                  data_interval <- sub_df |> 
+                        filter(simple_date >= start_date & simple_date <= end_date)
+                  
+                  if (nrow(data_interval) < 2) return(NULL)
+                  
+                  model <- lm(detrended_bm_m2 ~ simple_date, data = data_interval)
+                  
+                  tidy(model) |> 
+                        mutate(
+                              estuary = unique(sub_df$estuary),
+                              zone = unique(sub_df$zone),
+                              start_date = start_date,
+                              end_date = end_date,
+                              n_obs = nrow(data_interval)
+                        )
+            })
+      })
+
+resilience1 <- resilience_all_flags |> 
+      mutate(n_obs = case_when(
+            start_date == end_date ~ NA,
+            TRUE ~ n_obs
+      )) |> 
+      filter(n_obs > 2 & !is.na(n_obs))
+
+dist_summary <- all |> 
+      # filter(!is.na(dist_id))  |> 
+      arrange(estuary, zone, year, month, simple_date) |> 
+      group_by(estuary, zone, year, month) |> 
+      mutate(
+            dist_id_new = first(dist_id),
+            event_start_new = min(event_start, na.rm = TRUE),
+            event_end_new = max(event_end, na.rm = TRUE),
+            cum_anomaly_sum = sum(cum_anomaly, na.rm = TRUE)
+      ) %>%
+      ungroup()
+
+test <- dist_summary |> filter(event_end != event_end_new | event_start != event_start_new)
+
+### mack needs to figure out this resilience code... how can we get it fixed up?
+### then move onto recovery, then temporal stability
