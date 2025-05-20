@@ -42,6 +42,26 @@ df_summ <- read_csv('local-data/key-datasets/discrete-community-timeseries.csv')
 estuary <- read_csv("local-data/archive/for-joins/bay-to-estuary.csv") |> 
       janitor::clean_names()
 
+### quick site-level data for future analyses ----
+site_info <- df |> 
+      filter(gear_details == "21.3-m Seine") |> 
+      select(year, bay, zone, grid, latitude, longitude, depth, temp_c, cond, ph, sal_ppt, do2) |> 
+      distinct() |> 
+      group_by(bay, zone, grid, year) |> 
+      summarize(
+            lat = mean(latitude, na.rm = TRUE),
+            long = mean(longitude, na.rm = TRUE),
+            obs_temp = mean(temp_c, na.rm = TRUE),
+            obs_depth = mean(depth, na.rm = TRUE),
+            obs_cond = mean(cond, na.rm = TRUE),
+            obs_ph = mean(ph, na.rm = TRUE),
+            obs_sal = mean(sal_ppt, na.rm = TRUE),
+            obs_do2 = mean(do2, na.rm = TRUE),
+            site_metric_n = n()
+      ) |> 
+      ungroup()
+write_csv(site_info, "local-data/annual_site_information_of_interest.csv")
+
 df_total <- df |>
       left_join(estuary, by = "bay") 
 

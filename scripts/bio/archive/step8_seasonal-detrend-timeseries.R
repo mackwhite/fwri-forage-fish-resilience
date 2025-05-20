@@ -118,10 +118,13 @@ ss_detrended |>
       ggplot(aes(x=simple_date)) +
       geom_line(aes(y = bm_m2, color = "Original bm_m2"), size = 1) +
       geom_line(aes(y = detrended_bm_m2, color = "Detrended bm_m2"), size = 1, linetype = "dashed") +
-      labs(title = "Comparison of Original and Detrended Biomass",
+      labs(
+           # title = "Comparison of Original and Detrended Biomass",
+           title = "Apalachicola Bay - Zone C",
            x = "Date",
            y = "Biomass (bm_m2)",
-           color = "Legend") +
+           color = "Legend"
+           ) +
       theme_minimal()
 
 ### generate function to visualize seasonality for each estuary-zone combination ----

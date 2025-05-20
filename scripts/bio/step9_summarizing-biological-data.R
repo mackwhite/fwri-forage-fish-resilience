@@ -93,14 +93,14 @@ low_obs_flag <- df_total |>
       summarize(total_obs = n_distinct(date),
                 flag = case_when(
                       total_obs <= 50 ~ "remove",
-                      total_obs >= 150 ~ "remove",
+                      # total_obs >= 150 ~ "remove",
                       TRUE ~ "keep"))
 
 ### filter out sites with low sample sizes ----
 
 df_total_sample <- df_total |> 
       left_join(low_obs_flag, by = c("bay", "estuary","zone", "grid", "gear_details")) |> 
-      # filter(flag == "keep") |>
+      filter(flag == "keep") |>
       select(-flag) |> 
       filter(year >= 1996)
 
@@ -168,7 +168,7 @@ df_stability |>
       geom_point() +
       geom_smooth(method = "lm", se = TRUE, color = "black") +
       labs(x = "Total Observations (#)", y = "Forage Fish Biomass Stability (1/CV)") +
-      scale_x_continuous(breaks = c(50,60,70,80,90,100,110,120)) +
+      scale_x_continuous(breaks = c(50,100,150,200,250,300)) +
       scale_y_continuous(breaks = c(0.0,0.5,1.0,1.5,2.0,2.5)) +
       theme(axis.text = element_text(size = 12, face = "bold", colour = "black"), 
             axis.line = element_line(color = "black"),
@@ -183,11 +183,11 @@ df_stability |>
             legend.title = element_text(size = 12, color = "black", face = 'bold'),
             panel.background = element_rect(fill = "white"))
 
-# ggsave('figs/stability-sample-size-regression.png',
-#        dpi = 800,
-#        units= 'in',
-#        height = 6,
-#        width = 6.5)
+ggsave('figs/stability-sample-size-regression.png',
+       dpi = 800,
+       units= 'in',
+       height = 6,
+       width = 6.5)
 
 ### generate some simple figures ----
 
@@ -231,36 +231,36 @@ summary(model)
 r2 <- summary(model)$r.squared
 
 df_stability |>
-      filter(comm_species_richness <= 12) |> 
-      # ggplot(aes(x = comm_species_richness, y = comm_bm_stability)) +
+      filter(comm_species_richness >= 1) |> 
       ggplot(aes(x = log1p(comm_species_richness), y = log1p(comm_bm_stability))) +
       geom_point(aes(color = estuary), size = 2) +  # Adds the scatter plot points
       geom_smooth(method = "lm", size = 2, color = "black", linetype = "solid", se = FALSE) +
       labs(x = "log(Species Richness)",
-           y = "log(Forage Fish Biomass Stability)",
+           y = "log(Biomass Stability)",
            color = "Estuary") +
-      scale_x_continuous(breaks = c(1.25,1.50,1.75,2.00,2.25,2.50)) +
-      scale_y_continuous(breaks = c(0.00,0.25,0.50,0.75,1.00,1.25)) +
-      # annotate('text', 
-      #          x = 0.9, y = 1.8,
-      #          label = bquote({R^2} == 0.49),
-      #          size = 5) +
+      scale_x_continuous(breaks = c(1.25,1.50,1.75,2.00,2.25,2.50,2.75,3.00), limits = c(1.13,3.0)) +
+      scale_y_continuous(breaks = c(0.25,0.50,0.75,1.00,1.25)) +
+      annotate('text', x = 1.22, y = 1.35, label = bquote({R^2} == 0.11),
+               size = 5, fontface = "bold") +
+      annotate("text", x = 1.265, y = 1.28, label = bquote(italic(p) < 2 %*% 10^-16), 
+               size = 5, fontface = "bold") + 
       scale_color_manual(values = estuary_palette) +
-      theme(axis.text = element_text(size = 12, face = "bold", colour = "black"), 
+      theme(panel.background = element_rect(fill = "white"),
+            axis.text = element_text(size = 12, face = "bold", colour = "black"), 
             axis.line = element_line(color = "black"),
             axis.title.x = element_text(size = 15, face = "bold", colour = "black"),
             axis.title.y = element_text(size = 15, face = "bold", colour = "black"),
             plot.title = element_text(size = 16, face = "bold", colour = "black", hjust = 0.5), 
-            legend.position = "none",
-            # legend.text = element_text(size = 12, color = "black", face = 'bold'),
-            # legend.title = element_text(size = 12, color = "black", face = 'bold'),
-            panel.background = element_rect(fill = "white"))
+            legend.position = c(0.85,0.27),
+            # legend.justification = c(1, 0),
+            legend.text = element_text(face = "bold", color = "black"),
+            legend.title = element_text(face = "bold", color = "black"))
 
-# ggsave('figs/species-richness-stability.png',
-#        dpi = 800,
-#        units= 'in',
-#        height = 6,
-#        width = 6)
+ggsave('figs/species-richness-stability.png',
+       dpi = 800,
+       units= 'in',
+       height = 6,
+       width = 6)
 
 # write_csv(df_stability, "local-data/stability-model-data-012025.csv")
 
