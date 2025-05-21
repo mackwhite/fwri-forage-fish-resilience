@@ -44,7 +44,8 @@ temp <- read_csv('local-data/archive/temp-rainfall-data.csv') |>
       ungroup() |> 
       select(-c('is_filled', 'daymonth')) |> 
       select(bay, estuary, date, year, month, day, jday, 
-             metric, value, dmean, dsd, mmean, msd)
+             metric, value, dmean, dsd, mmean, msd) |> 
+      filter(year >= 1990)
 
 nacheck(temp)
 glimpse(temp)
@@ -90,11 +91,11 @@ temp |>
             strip.background = element_rect(fill = 'white'),
             strip.text = element_text(size = 12, face = "bold", colour = "black", hjust = 0.5))
 
-# ggsave('figs/climatological-maximum-means.png',
-#        dpi = 800,
-#        units= 'in',
-#        height = 6,
-#        width = 6.5)
+ggsave('figs/climatological-maximum-means.png',
+       dpi = 800,
+       units= 'in',
+       height = 6,
+       width = 6.5)
 
 ### defining thresholds for 90th percentile evaluation ---
 threshold <- temp |> 
@@ -263,44 +264,32 @@ glimpse(mhw2)
 ### also add information for summer vs winter observations (maybe drop/incorporate winter "heat waves")
 
 mhw3 <- mhw2 |> 
-      group_by(bay, estuary, mhw_event_id) |> 
-      summarize(auc = trapz(as.numeric(date), mean_anomaly),
-                duration = duration,
-                start_date = mhw_start,
-                end_date = mhw_end) |> 
-      ungroup() |> 
+      # group_by(bay, estuary, mhw_event_id) |> 
+      # summarize(auc = trapz(as.numeric(date), mean_anomaly),
+      #           duration = duration,
+      #           start_date = mhw_start,
+      #           end_date = mhw_end) |> 
+      # ungroup() |> 
+      # distinct() |> 
+      # group_by(bay, estuary) |> 
+      # mutate(
+      #       auc_90 = quantile(auc, 0.90, na.rm = TRUE),
+      #       auc_95 = quantile(auc, 0.95, na.rm = TRUE),
+      #       auc_99 = quantile(auc, 0.99, na.rm = TRUE) 
+      # ) |> 
+      # mutate(flag = case_when(
+      #       auc >= auc_99 ~ "Extreme",
+      #       auc >= auc_95 ~ "Severe",
+      #       auc >= auc_90 ~ "Significant",
+      #       TRUE ~ "Moderate"
+      # )) |> 
+      # ungroup() |> 
       distinct() |> 
-      group_by(bay, estuary) |> 
-      mutate(
-            auc_90 = quantile(auc, 0.90, na.rm = TRUE),
-            auc_95 = quantile(auc, 0.95, na.rm = TRUE),
-            auc_99 = quantile(auc, 0.99, na.rm = TRUE) 
-      ) |> 
-      mutate(flag = case_when(
-            auc >= auc_99 ~ "Extreme",
-            auc >= auc_95 ~ "Severe",
-            auc >= auc_90 ~ "Significant",
-            TRUE ~ "Moderate"
-      )) |> 
-      ungroup() |> 
-      distinct()
+      mutate(start_year = year(mhw_start),
+             start_month = month(mhw_end)) |> 
+      select(bay, estuary, event, mhw_event_id, duration, mhw_start, mhw_end, max_anomaly, mean_anomaly, cum_anomaly, start_year, start_month) |> 
+      distinct() |> 
+      filter(start_month %in% c(4:9))
 
-nacheck(mhw3)
-glimpse(mhw3)
-
-mhw_severity <- mhw1 |> 
-      left_join(mhw3, by = c("bay", "estuary", "mhw_event_id", "duration")) |> 
-      mutate(start_year = year(start_date),
-             start_month = month(start_date)) |> 
-      filter(start_year >= 1995) |> 
-      filter(flag %in% c('Extreme', 'Significant', 'Severe'))
-
-mhw_severity2 <- mhw2 |> 
-      left_join(mhw3, by = c("bay", "estuary", "mhw_event_id", "duration")) |> 
-      mutate(start_year = year(start_date),
-             start_month = month(start_date)) |> 
-      filter(start_year >= 1995) |> 
-      filter(flag %in% c('Extreme', 'Significant', 'Severe'))
-
-write_csv(mhw_severity, 'local-data/marine-heat-wave-timeseries.csv')
-write_csv(mhw_severity2, 'local-data/marine-heat-wave-severity.csv')
+# write_csv(mhw_severity, 'local-data/marine-heat-wave-timeseries.csv')
+write_csv(mhw3, 'local-data/marine-heat-wave-severity.csv')

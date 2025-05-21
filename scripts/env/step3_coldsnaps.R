@@ -44,7 +44,8 @@ temp <- read_csv('local-data/archive/temp-rainfall-data.csv') |>
       ungroup() |> 
       select(-c('is_filled', 'daymonth')) |> 
       select(bay, estuary, date, year, month, day, jday, 
-             metric, value, dmean, dsd, mmean, msd)
+             metric, value, dmean, dsd, mmean, msd) |> 
+      filter(year >= 1990)
 
 nacheck(temp)
 glimpse(temp)
@@ -263,49 +264,35 @@ nacheck(coldsnap2)
 glimpse(coldsnap2)
 
 coldsnap3 <- coldsnap2 |> 
-      group_by(bay, estuary, coldsnap_event_id) |> 
-      summarize(auc = trapz(as.numeric(date), mean_anomaly),
-                duration = duration,
-                start_date = coldsnap_start,
-                end_date = coldsnap_end) |> 
-      ungroup() |> 
+      # group_by(bay, estuary, coldsnap_event_id) |> 
+      # summarize(auc = trapz(as.numeric(date), mean_anomaly),
+      #           duration = duration,
+      #           start_date = coldsnap_start,
+      #           end_date = coldsnap_end) |> 
+      # ungroup() |> 
+      # distinct() |> 
+      # group_by(bay, estuary) |> 
+      # mutate(
+      #       auc_90 = quantile(auc, 0.90, na.rm = TRUE),
+      #       auc_95 = quantile(auc, 0.95, na.rm = TRUE),
+      #       auc_99 = quantile(auc, 0.99, na.rm = TRUE) 
+      # ) |> 
+      # mutate(flag = case_when(
+      #       auc >= auc_99 ~ "Extreme",
+      #       auc >= auc_95 ~ "Severe",
+      #       auc >= auc_90 ~ "Significant",
+      #       TRUE ~ "Moderate"
+      # )) |> 
+      # ungroup()       
       distinct() |> 
-      group_by(bay, estuary) |> 
-      mutate(
-            auc_90 = quantile(auc, 0.90, na.rm = TRUE),
-            auc_95 = quantile(auc, 0.95, na.rm = TRUE),
-            auc_99 = quantile(auc, 0.99, na.rm = TRUE) 
-      ) |> 
-      mutate(flag = case_when(
-            auc >= auc_99 ~ "Extreme",
-            auc >= auc_95 ~ "Severe",
-            auc >= auc_90 ~ "Significant",
-            TRUE ~ "Moderate"
-      )) |> 
-      ungroup()
+      mutate(start_year = year(coldsnap_start),
+             start_month = month(coldsnap_end)) |> 
+      select(bay, estuary, event, coldsnap_event_id, duration, coldsnap_start, coldsnap_end, min_anomaly, mean_anomaly, cum_anomaly, start_year, start_month) |> 
+      distinct() |> 
+      filter(start_month %in% c(1,2,3,10,11,12))
 
 nacheck(coldsnap3)
 glimpse(coldsnap3)
 
-coldsnap_severity <- coldsnap1 |> 
-      left_join(coldsnap3, by = c("bay", "estuary", "coldsnap_event_id", "duration")) |> 
-      mutate(start_year = year(start_date),
-             start_month = month(start_date)) |> 
-      filter(start_year >= 1995) |> 
-      filter(flag %in% c('Extreme', 'Significant', 'Severe'))
-      
-coldsnap_severity2 <- coldsnap2 |> 
-      left_join(coldsnap3, by = c("bay", "estuary", "coldsnap_event_id", "duration")) |> 
-      mutate(start_year = year(start_date),
-             start_month = month(start_date)) |> 
-      filter(start_year >= 1995) |> 
-      filter(flag %in% c('Extreme', 'Significant', 'Severe'))
-
-write_csv(coldsnap_severity, 'local-data/marine-cold-snap-timeseries.csv')
-write_csv(coldsnap_severity2, 'local-data/marine-cold-snap-severity.csv')
-
-coldsnap_severity2 |> 
-      ggplot(aes(x=auc_90, y=cum_anomaly)) +
-      geom_point() +
-      geom_abline()
-
+# write_csv(coldsnap_severity, 'local-data/marine-cold-snap-timeseries.csv')
+write_csv(coldsnap3, 'local-data/marine-cold-snap-severity.csv')

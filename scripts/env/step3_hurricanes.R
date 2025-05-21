@@ -18,7 +18,9 @@ nacheck <- function(df) {
 
 hurricanes <- read_csv('local-data/hurricane-info-raw.csv') |> 
       filter(site %in% c('Cedar_Key', 'Charlotte_Harbor', 'Jacksonville',
-                         'Northern_Indian_River', 'Tampa_Bay', 'Southern_Indian_River')) |> 
-      filter(hurDate >= '1995-01-01')
+                         'Northern_Indian_River', 'Tampa_Bay', 'Southern_Indian_River', "Apalachicola_Bay")) |> 
+      filter(hurDate >= '1996-01-01') |> 
+      filter(!is.na(DistClosest_km))
+      
 unique(hurricanes$site)
 unique(hurricanes$SID)
