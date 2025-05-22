@@ -36,28 +36,28 @@ cold_snap_palette = c("Moderate"="lightgrey",
                       "Severe"="#4682B4",
                       "Extreme"="darkblue")
 
-### read in data ----
+## read in data ----
 df <- read_rds("local-data/key-datasets/forage_fish_master.RDS")
 estuary <- read_csv("local-data/archive/for-joins/bay-to-estuary.csv") |> janitor::clean_names()
 site_info <- read_csv("local-data/annual_site_information_of_interest.csv")
 
-dat <- df |> 
-      left_join(estuary, by = "bay") |> 
-      left_join(site_info, join_by("year", "zone", "grid", "bay")) |> 
-      filter(gear_details == "21.3-m Seine") |> 
+dat <- df |>
+      left_join(estuary, by = "bay") |>
+      left_join(site_info, join_by("year", "zone", "grid", "bay")) |>
+      filter(gear_details == "21.3-m Seine") |>
       mutate(year_month = paste(year, month, sep = ""),
              year_month = as.numeric(year_month),
              est_zone = paste(estuary, zone, sep = "_"),
              est_zone_grid = paste(est_zone, grid, sep = "_"),
              site = paste(est_zone_grid, rep, sep = "_"),
              biomass = ((n*mean_weight_g)/140),
-             abundance = (n/140)) |> 
-      group_by(site) |> 
-      mutate(obs = n()) |> 
-      ungroup() |> 
-      filter(obs>24) |> 
-      select(-obs) |> 
-      filter(year >= 1996) |> 
+             abundance = (n/140)) |>
+      group_by(site) |>
+      mutate(obs = n()) |>
+      ungroup() |>
+      filter(obs>24) |>
+      select(-obs) |>
+      filter(year >= 1996) |>
       mutate(simple_date = make_date(year = year, month = month, day = 1))
 glimpse(dat)
 
@@ -68,55 +68,55 @@ metrics <- c("biomass", "abundance")
 ### create de-trending function ---
 detrend_all <- function(df, metrics) {
       df <- df |> arrange(simple_date)
-      
+
       if (nrow(df) < 24) {
             for (m in metrics) {
                   df[[paste0("detrended_", m)]] <- df[[m]]
             }
             return(df)
       }
-      
+
       for (m in metrics) {
             # Interpolate NA values
             x <- na.approx(df[[m]], rule = 2, na.rm = FALSE)
-            
+
             # Convert to time series
             ts_data <- ts(x, frequency = 12, start = c(min(df$year), min(df$month)))
-            
+
             # STL decomposition
             fit <- stl(ts_data, s.window = "periodic")
-            
+
             # Save trend
             df[[paste0("detrended_", m)]] <- as.numeric(fit$time.series[, "trend"])
       }
       return(df)
 }
 
-ss_detrended <- dat |> 
-      group_by(estuary, zone, grid) |> 
-      group_split() |> 
-      lapply(detrend_all, metrics = metrics) |> 
+ss_detrended <- dat |>
+      group_by(estuary, zone) |>
+      group_split() |>
+      lapply(detrend_all, metrics = metrics) |>
       bind_rows()
 glimpse(ss_detrended)
 
 ### set up dataset for calculations ---
 
-dat1 <- ss_detrended |> 
-      select(site, year, year_month, scientific_name, detrended_biomass, detrended_abundance) |> 
-      distinct() |> 
-      group_by(site, year, year_month, scientific_name) |> 
-      mutate(count = n()) |> 
-      ungroup() |> 
-      group_by(site, year, year_month, scientific_name) |> 
+dat1 <- ss_detrended |>
+      select(site, year, year_month, scientific_name, detrended_biomass, detrended_abundance) |>
+      distinct() |>
+      group_by(site, year, year_month, scientific_name) |>
+      mutate(count = n()) |>
+      ungroup() |>
+      group_by(site, year, year_month, scientific_name) |>
       summarize(detrended_biomass = mean(detrended_biomass, na.rm = TRUE),
-                detrended_abundance = mean(detrended_abundance, na.rm = TRUE)) |> 
-      ungroup() |> 
-      group_by(site, year, scientific_name) |> 
+                detrended_abundance = mean(detrended_abundance, na.rm = TRUE)) |>
+      ungroup() |>
+      group_by(site, year, scientific_name) |>
       summarize(detrended_biomass = mean(detrended_biomass, na.rm = TRUE),
-                detrended_abundance = mean(detrended_abundance, na.rm = TRUE)) |> 
-      ungroup() |> 
+                detrended_abundance = mean(detrended_abundance, na.rm = TRUE)) |>
+      ungroup() |>
       mutate(detrended_biomass = detrended_biomass +9,
-             detrended_abundance = detrended_abundance + 61) |> 
+             detrended_abundance = detrended_abundance + 61) |>
       na.omit()
 
 site_vector <- unique(dat1$site)

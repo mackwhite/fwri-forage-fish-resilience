@@ -1,6 +1,6 @@
 ###project: Forage Fish Resilience
 ###author(s): MW
-###goal(s): merge final datasets
+###goal(s): resistance and resilience calculations
 ###date(s): January 2025
 ###note(s): 
 
@@ -38,11 +38,11 @@ cold_snap_palette = c("Moderate"="lightgrey",
 
 ### read in data ----
 
-discrete <- read_csv("local-data/key-datasets/discrete_foragefish_final.csv") |> 
+discrete <- read_csv("local-data/key-datasets/discrete-detrended-forage-fish-small-seine-time-series.csv") |> 
       group_by(bay, zone, year, month) |> 
-      summarize(across(detrended_bm_m2:seasonal_pelagic_prop, \(x) mean(x)), .groups = "drop")
-
-stability <- read_csv("local-data/key-datasets/stability_foragefish_final.csv")
+      summarize(across(detrended_biomass_m2 :detrended_species_evenness, \(x) mean(x)), .groups = "drop") |> 
+      filter(year >= 1996) |> 
+      rename(detrended_bm_m2 = detrended_biomass_m2)
 
 hurricanes <- read_xlsx('local-data/hurricane-intensity-information.xlsx') |> 
       rename(bay = estuary) |> 
@@ -280,3 +280,13 @@ met_dist_long <- met_dist |>
       ) |> 
       filter(!is.na(resistance)) |> 
       mutate(recovery_months_inflated = if_else(recover_mos_adj == 0.1, "yes", "no"))
+
+met_dist_long |> 
+      filter(recovery_months_inflated != "yes") |> 
+      filter(resistance_raw >= -1.5) |> 
+      ggplot(aes(x = resilience_raw, y = resistance_raw)) +
+      geom_point() +
+      geom_smooth(method = "lm", se = FALSE) +
+      facet_wrap(~bay)
+
+write_csv(met_dist_long, 'local-data/key-datasets/resistance-resilience-calcs.csv')

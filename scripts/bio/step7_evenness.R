@@ -38,16 +38,15 @@ cold_snap_palette = c("Moderate"="lightgrey",
 ### read in data and bind -----
 df <- read_rds("local-data/key-datasets/forage_fish_master.RDS")
 glimpse(df)
-df_summ <- read_csv('local-data/key-datasets/discrete-community-timeseries.csv')
-estuary <- read_csv("local-data/archive/for-joins/bay-to-estuary.csv") |> 
-      janitor::clean_names()
+estuary <- read_csv("local-data/archive/for-joins/bay-to-estuary.csv") |> janitor::clean_names()
 
 ### quick site-level data for future analyses ----
 site_info <- df |> 
       filter(gear_details == "21.3-m Seine") |> 
       select(year, bay, zone, grid, latitude, longitude, depth, temp_c, cond, ph, sal_ppt, do2) |> 
       distinct() |> 
-      group_by(bay, zone, grid, year) |> 
+      group_by(bay, zone, grid, year) |>
+      # group_by(bay, zone, grid) |>
       summarize(
             lat = mean(latitude, na.rm = TRUE),
             long = mean(longitude, na.rm = TRUE),
@@ -60,13 +59,14 @@ site_info <- df |>
             site_metric_n = n()
       ) |> 
       ungroup()
-write_csv(site_info, "local-data/annual_site_information_of_interest.csv")
+# write_csv(site_info, "local-data/annual_site_information_of_interest.csv")
+# write_csv(site_info, "local-data/por_site_information_of_interest.csv")
 
 df_total <- df |>
       left_join(estuary, by = "bay") 
 
 df_wide <- df_total %>%
-      group_by(year, month, day, bay, estuary, gear_details, rep, zone, subzone, grid, scientific_name) %>%
+      group_by(year, month, day, bay, estuary, gear_details, rep, zone, subzone, grid, scientific_name) |> 
       summarise(n = sum(n, na.rm = TRUE), .groups = "drop") %>%
       pivot_wider(names_from = scientific_name, values_from = n, values_fill = 0)  # Convert to wide format
 
@@ -74,31 +74,20 @@ df_wide <- df_total %>%
 df_wide <- as.data.frame(df_wide)
 
 # Select only species abundance columns for `diversity()` function
-abundance_matrix <- df_wide %>% select(-year, -month, -day, -bay, -estuary, -gear_details, -rep, -zone, -subzone, -grid)
+abundance_matrix <- df_wide |> select(-year, -month, -day, -bay, -estuary, -gear_details, -rep, -zone, -subzone, -grid)
 
 df_wide$H <- diversity(abundance_matrix, index = "shannon")
 df_wide$S <- rowSums(abundance_matrix > 0)
 
-df_final <- df_total %>%
-      left_join(df_wide %>% select(year, month, day, bay, estuary, gear_details, rep, zone, subzone, grid, H, S), 
+df_final <- df_total |> 
+      left_join(df_wide |> select(year, month, day, bay, estuary, gear_details, rep, zone, subzone, grid, H, S), 
                 by = c("year", "month", "day", "bay", "estuary", "gear_details", "rep", "zone", "subzone", "grid")) |> 
       select(year, month, day, bay, estuary, gear_details, rep, zone, subzone, grid, H, S) |> 
       distinct() |> 
       mutate(rep = as.numeric(rep))
 
-df_all <- df_summ |>
-      left_join(df_final, by = c("year", "month", "day", "bay", "estuary", "gear_details", "rep", "zone", "subzone", "grid"))
-glimpse(df_all)
-nacheck(df_all)
-
-df_for_joins <- df_all |> select(year, month, day, bay, estuary, gear_details, rep, zone, subzone, grid, H, S)
-write_csv(df_for_joins, "local-data/evenness_metrics_for_join_in_stepseven.csv")
-
-test <- df_all |> 
-      select(species_richness, S, H)
-
-test |> ggplot(aes(x=species_richness, y=H)) +
-      geom_point() +
-      geom_abline()
-
-
+df_for_joins <- df_final |> select(year, month, day, bay, estuary, gear_details, rep, zone, subzone, grid, H, S) |> 
+      rename(species_richness = S,
+             species_evenness = H)
+glimpse(df_for_joins)
+write_csv(df_for_joins, "local-data/evenness_metrics_for_join_in_step_eight.csv")

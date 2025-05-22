@@ -22,6 +22,7 @@ nacheck <- function(df) {
 tbl_corp_hydrolab <- read_rds('local-data/archive/Hydro.RDS') |> 
       select(-Flag) |> 
       janitor::clean_names()
+### below is the correct version
 bio <- read_rds("local-data/forage_fish_master1.RDS") |> 
       select(-mean_weight_g, -min_weight_g, -max_weight_g, -tot_n, -lw_a, -lw_b, -lw_r2)
 traits <- read_csv("local-data/key-datasets/ff_traits_filled.csv")

@@ -37,37 +37,15 @@ cold_snap_palette = c("Moderate"="lightgrey",
                       "Extreme"="darkblue")
 
 ### read in data ----
-sampling_event <- read_csv('local-data/key-datasets/discrete-community-timeseries.csv')
-annual <- read_csv('local-data/key-datasets/annual-community-timeseries.csv')
-stability <- read_csv('local-data/key-datasets/community-biomass-stability.csv')
+stability <- read_csv("local-data/stability-filterd-may2025.csv")
 dynamics <- read_csv('local-data/forage-fish-dynamics.csv')
-estuary <- read_csv("local-data/archive/for-joins/bay-to-estuary.csv") |> janitor::clean_names()
-site_info <- read_csv("local-data/annual_site_information_of_interest.csv")
-site_info_por <- read_csv('local-data/site_information_of_interest.csv')
-
-### sampling event ----
-glimpse(sampling_event)
-glimpse(site_info)
-site <- site_info |> select(bay,zone,grid,year,lat,long)
-discrete_final <- sampling_event |> 
-      left_join(estuary) |> 
-      left_join(site_info)
-
-### annual time step ----
-glimpse(annual)
-annual_final <- annual |> left_join(estuary)
 
 ### stability ----
 glimpse(stability)
 glimpse(dynamics)
 
 stability_final <- stability |> 
-      rename(lat = mean_lat,
-             long = mean_long) |> 
       left_join(dynamics)
 
 ### read out final datasets ---
-
-write_csv(discrete_final, "local-data/key-datasets/discrete_foragefish_final.csv")
-write_csv(annual_final, "local-data/key-datasets/annual_foragefish_final.csv")
 write_csv(stability_final, "local-data/key-datasets/stability_foragefish_final.csv")
