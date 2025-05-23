@@ -1,555 +1,373 @@
 ###project: Forage Fish Resilience
 ###author(s): MW
-###goal(s): bayesian regression models
+###goal(s): simple anova and Bayesian regression models
 ###date(s): January 2025
 ###note(s): 
 
 # Housekeeping ------------------------------------------------------------
 
-### load necessary libraries ---
-# install.packages("librarian")
-librarian::shelf(tidyverse, readr, zoo, MuMIn, corrplot, performance, ggeffects,
-                 ggpubr, parameters, ggstats, brms, mixedup)
-
-dat <- read_csv('local-data/key-datasets/community-biomass-stability.csv') |> 
-      filter(total_obs >= 50) |> 
-      select(-flag) |> 
-      rename(gear = gear_details,
-             stability = comm_bm_stability) |> 
-      filter(gear != "Haul Seine") |> 
-      select(-gear, -comm_bm_mean, -comm_bm_sd, -comm_bm_cv, -total_obs, -bay)
-glimpse(dat)
-
-test <- dat |> group_by(estuary) |> count()
-print(test)
-
-dat_scaled <- dat |>
-      select(estuary, zone, grid, stability, everything()) |>
-      mutate(stability = scale(stability)) |>
-      group_by(estuary) |>
-      ## this is a function syntax
-      mutate(across(comm_species_richness:comm_pelagic_prop, \(x) scale(x, center = TRUE))) |>
-      ungroup()
-glimpse(dat_scaled)
-
-### set priors following Lemoine (2019, Ecology)
-pr = prior(normal(0, 1), class = 'b')
-
-### test out correlations ---
-test_corr <- dat_scaled |> select(-estuary, -zone, -grid)
-matrix <- cor(test_corr, use = 'complete.obs')
-corrplot(matrix, method = "number", type = "lower", tl.col = "black", tl.srt = 45)
-
-df <- dat_scaled |> 
-      rename_with(~gsub("comm_", "", .x), everything())
-glimpse(df)
-
-### clean up env ---
-rm(list = setdiff(ls(), c("dat", "df", "pr")))
-
-### full models ----
-### round one ----
-m1 <- brm(stability ~ species_richness + (species_richness|estuary),
-          data = df, prior = pr, warmup = 100, iter = 1000, chains = 4)
-
-m2 <- brm(stability ~ species_evenness + (species_evenness|estuary),
-          data = df, prior = pr, warmup = 100, iter = 1000, chains = 4)
-
-m3 <- brm(stability ~ max_size + (max_size|estuary),
-          data = df, prior = pr, warmup = 100, iter = 1000, chains = 4)
-
-m4 <- brm(stability ~ k + (k|estuary),
-          data = df, prior = pr, warmup = 100, iter = 1000, chains = 4)
-
-m5 <- brm(stability ~ generation_time + (generation_time|estuary),
-          data = df, prior = pr, warmup = 100, iter = 1000, chains = 4)
-
-m6 <- brm(stability ~ depth_min + (depth_min|estuary),
-          data = df, prior = pr, warmup = 100, iter = 1000, chains = 4)
-
-m7 <- brm(stability ~ depth_max + (depth_max|estuary),
-          data = df, prior = pr, warmup = 100, iter = 1000, chains = 4)
-
-m8 <- brm(stability ~ temp_min + (temp_min|estuary),
-          data = df, prior = pr, warmup = 100, iter = 1000, chains = 4)
-
-m9 <- brm(stability ~ temp_max + (temp_max|estuary),
-          data = df, prior = pr, warmup = 100, iter = 1000, chains = 4)
-
-m10 <- brm(stability ~ benthic_prop + (benthic_prop|estuary),
-          data = df, prior = pr, warmup = 100, iter = 1000, chains = 4)
-
-m11 <- brm(stability ~ pelagic_prop + (pelagic_prop|estuary),
-           data = df, prior = pr, warmup = 100, iter = 1000, chains = 4)
-
-model_table <- performance::compare_performance(m1,m2,m3,m4,m5,m6,m7,m8,m9,m10,m11)
-model_selection <- model_table |>
-      mutate(dWAIC = WAIC - min(WAIC))
-
-### clean environment ---
-rm(list = setdiff(ls(), c("dat", "df", 'm1', 'pr')))
-
-### round two ----
-m1 <- brm(stability ~ species_richness + (species_richness|estuary),
-          data = df, prior = pr, warmup = 100, iter = 1000, chains = 4)
-
-### species richness and evenness highlight correlated, so it will be dropped from models moving forward
-
-m13 <- brm(stability ~ species_richness + max_size + (species_richness+max_size|estuary),
-          data = df, prior = pr, warmup = 100, iter = 1000, chains = 4)
-
-m14 <- brm(stability ~ species_richness + k + (species_richness+k|estuary),
-          data = df, prior = pr, warmup = 100, iter = 1000, chains = 4)
-
-m15 <- brm(stability ~ species_richness + generation_time + (species_richness+generation_time|estuary),
-          data = df, prior = pr, warmup = 100, iter = 1000, chains = 4)
-
-m16 <- brm(stability ~ species_richness + depth_min + (species_richness+depth_min|estuary),
-          data = df, prior = pr, warmup = 100, iter = 1000, chains = 4)
-
-m17 <- brm(stability ~ species_richness + depth_max + (species_richness+depth_max|estuary),
-          data = df, prior = pr, warmup = 100, iter = 1000, chains = 4)
-
-m18 <- brm(stability ~ species_richness + temp_min + (species_richness+temp_min|estuary),
-          data = df, prior = pr, warmup = 100, iter = 1000, chains = 4)
-
-m19 <- brm(stability ~ species_richness + temp_max + (species_richness+temp_max|estuary),
-          data = df, prior = pr, warmup = 100, iter = 1000, chains = 4)
-
-m110 <- brm(stability ~ species_richness + benthic_prop + (species_richness+benthic_prop|estuary),
-           data = df, prior = pr, warmup = 100, iter = 1000, chains = 4)
-
-m111 <- brm(stability ~ species_richness + pelagic_prop + (species_richness+pelagic_prop|estuary),
-           data = df, prior = pr, warmup = 100, iter = 1000, chains = 4)
-
-model_table <- performance::compare_performance(m1,m13,m14,m15,m16,m17,m18,m19,m110,m111)
-model_selection <- model_table |>
-      mutate(dWAIC = WAIC - min(WAIC))
-
-rm(list = setdiff(ls(), c("dat", "df", 'm17', 'pr')))
-
-### round three ----
-m173 <- brm(stability ~ species_richness + depth_max + max_size + (species_richness+depth_max+max_size|estuary),
-           data = df, prior = pr, warmup = 100, iter = 1000, chains = 4)
-
-m174 <- brm(stability ~ species_richness + depth_max + k + (species_richness+depth_max+k|estuary),
-           data = df, prior = pr, warmup = 100, iter = 1000, chains = 4)
-
-m175 <- brm(stability ~ species_richness + depth_max + generation_time + (species_richness+depth_max+generation_time|estuary),
-           data = df, prior = pr, warmup = 100, iter = 1000, chains = 4)
-
-m176 <- brm(stability ~ species_richness + depth_max + depth_min + (species_richness+depth_max+depth_min|estuary),
-           data = df, prior = pr, warmup = 100, iter = 1000, chains = 4)
-
-m17 <- brm(stability ~ species_richness + depth_max + (species_richness+depth_max|estuary),
-           data = df, prior = pr, warmup = 100, iter = 1000, chains = 4)
-
-m178 <- brm(stability ~ species_richness + depth_max + temp_min + (species_richness+depth_max+temp_min|estuary),
-           data = df, prior = pr, warmup = 100, iter = 1000, chains = 4)
-
-m179 <- brm(stability ~ species_richness + depth_max + temp_max + (species_richness+depth_max+temp_max|estuary),
-           data = df, prior = pr, warmup = 100, iter = 1000, chains = 4)
-
-m1710 <- brm(stability ~ species_richness + depth_max + benthic_prop + (species_richness+depth_max+benthic_prop|estuary),
-            data = df, prior = pr, warmup = 100, iter = 1000, chains = 4)
-
-m1711 <- brm(stability ~ species_richness + depth_max + pelagic_prop + (species_richness+depth_max+pelagic_prop|estuary),
-            data = df, prior = pr, warmup = 100, iter = 1000, chains = 4)
-
-model_table <- performance::compare_performance(m173,m174,m175,m176,m17,m178,m179,m1710,m1711)
-model_selection <- model_table |>
-      mutate(dWAIC = WAIC - min(WAIC))
-
-rm(list = setdiff(ls(), c("dat", "df", 'm176', 'pr')))
-
-### round four ----
-mm1763 <- brm(stability ~ species_richness + depth_max + depth_min + max_size + (species_richness+depth_max+depth_min+max_size|estuary),
-            data = df, prior = pr, warmup = 100, iter = 1000, chains = 4)
-
-mm1764 <- brm(stability ~ species_richness + depth_max + depth_min + k + (species_richness+depth_max+depth_min+k|estuary),
-            data = df, prior = pr, warmup = 100, iter = 1000, chains = 4)
-
-mm1765 <- brm(stability ~ species_richness + depth_max + depth_min + generation_time + (species_richness+depth_max+depth_min+generation_time|estuary),
-            data = df, prior = pr, warmup = 100, iter = 1000, chains = 4)
-
-mm1768 <- brm(stability ~ species_richness + depth_max + depth_min + temp_min + (species_richness+depth_max+depth_min+temp_min|estuary),
-            data = df, prior = pr, warmup = 100, iter = 1000, chains = 4)
-
-mm1769 <- brm(stability ~ species_richness + depth_max + depth_min + temp_max + (species_richness+depth_max+depth_min+temp_max|estuary),
-            data = df, prior = pr, warmup = 100, iter = 1000, chains = 4)
-
-mm17610 <- brm(stability ~ species_richness + depth_max + depth_min + benthic_prop + (species_richness+depth_max+depth_min+benthic_prop|estuary),
-             data = df, prior = pr, warmup = 100, iter = 1000, chains = 4)
-
-mm17611 <- brm(stability ~ species_richness + depth_max + depth_min + pelagic_prop + (species_richness+depth_max+depth_min+pelagic_prop|estuary),
-             data = df, prior = pr, warmup = 100, iter = 1000, chains = 4)
-
-model_table <- performance::compare_performance(mm1763,mm1764,mm1765,m176,mm1768,mm1769,mm17610,mm17611)
-model_selection <- model_table |>
-      mutate(dWAIC = WAIC - min(WAIC))
-
-rm(list = setdiff(ls(), c("dat", "df", 'mm1764', 'pr')))
-
-### round four ----
-mm17643 <- brm(stability ~ species_richness + depth_max + depth_min + k + max_size + (species_richness+depth_max+depth_min+k+max_size|estuary),
-              data = df, prior = pr, warmup = 100, iter = 1000, chains = 4)
-
-mm17645 <- brm(stability ~ species_richness + depth_max + depth_min + k + generation_time + (species_richness+depth_max+depth_min+k+generation_time|estuary),
-              data = df, prior = pr, warmup = 100, iter = 1000, chains = 4)
-
-mm17648 <- brm(stability ~ species_richness + depth_max + depth_min + k + temp_min + (species_richness+depth_max+depth_min+k+temp_min|estuary),
-              data = df, prior = pr, warmup = 100, iter = 1000, chains = 4)
-
-mm17649 <- brm(stability ~ species_richness + depth_max + depth_min + k + temp_max + (species_richness+depth_max+depth_min+k+temp_max|estuary),
-              data = df, prior = pr, warmup = 100, iter = 1000, chains = 4)
-
-mm176410 <- brm(stability ~ species_richness + depth_max + depth_min + k + benthic_prop + (species_richness+depth_max+depth_min+k+benthic_prop|estuary),
-               data = df, prior = pr, warmup = 100, iter = 1000, chains = 4)
-
-mm176411 <- brm(stability ~ species_richness + depth_max + depth_min + k + pelagic_prop + (species_richness+depth_max+depth_min+k+pelagic_prop|estuary),
-               data = df, prior = pr, warmup = 100, iter = 1000, chains = 4)
-
-model_table <- performance::compare_performance(mm17643,mm1764,mm17645,mm17648,mm17649,mm176410,mm176411)
-model_selection <- model_table |>
-      mutate(dWAIC = WAIC - min(WAIC))
-
-rm(list = setdiff(ls(), c("dat", "df", 'mm17649', 'pr')))
-
-### round five ----
-mm176493 <- brm(stability ~ species_richness + depth_max + depth_min + k + temp_max + max_size + (species_richness+depth_max+depth_min+k+temp_max+max_size|estuary),
-               data = df, prior = pr, warmup = 100, iter = 1000, chains = 4)
-
-mm176495 <- brm(stability ~ species_richness + depth_max + depth_min + k + temp_max + generation_time + (species_richness+depth_max+depth_min+k+temp_max+generation_time|estuary),
-               data = df, prior = pr, warmup = 100, iter = 1000, chains = 4)
-
-mm1764910 <- brm(stability ~ species_richness + depth_max + depth_min + k + temp_max + benthic_prop + (species_richness+depth_max+depth_min+k+temp_max+benthic_prop|estuary),
-                data = df, prior = pr, warmup = 100, iter = 1000, chains = 4)
-
-mm1764911 <- brm(stability ~ species_richness + depth_max + depth_min + k + temp_max + pelagic_prop + (species_richness+depth_max+depth_min+k+temp_max+pelagic_prop|estuary),
-                data = df, prior = pr, warmup = 100, iter = 1000, chains = 4)
-
-model_table <- performance::compare_performance(mm176493,mm176495,mm17649,mm1764910,mm1764911)
-model_selection <- model_table |>
-      mutate(dWAIC = WAIC - min(WAIC))
-
-rm(list = setdiff(ls(), c("dat", "df", 'mm1764910', 'pr')))
-
-### round six ----
-mm17649103 <- brm(stability ~ species_richness + depth_max + depth_min + k + temp_max + benthic_prop + max_size + (species_richness+depth_max+depth_min+k+temp_max+benthic_prop+max_size|estuary),
-                data = df, prior = pr, warmup = 100, iter = 1000, chains = 4)
-
-mm17649105 <- brm(stability ~ species_richness + depth_max + depth_min + k + temp_max + benthic_prop + generation_time + (species_richness+depth_max+depth_min+k+temp_max+benthic_prop+generation_time|estuary),
-                data = df, prior = pr, warmup = 100, iter = 1000, chains = 4)
-
-mm176491011 <- brm(stability ~ species_richness + depth_max + depth_min + k + temp_max + benthic_prop + pelagic_prop + (species_richness+depth_max+depth_min+k+temp_max+benthic_prop+pelagic_prop|estuary),
-                 data = df, prior = pr, warmup = 100, iter = 1000, chains = 4)
-
-model_table <- performance::compare_performance(mm17649103,mm17649105,mm1764910,mm176491011)
-model_selection <- model_table |>
-      mutate(dWAIC = WAIC - min(WAIC))
-
-rm(list = setdiff(ls(), c("dat", "df", 'mm1764910', 'pr')))
-
-### save best overall model ----
-full_model <- mm1764910
-full_model_re_slope <- mixedup::extract_random_coefs(full_model)
-full_model_re_slope_exp <- full_model_re_slope |>
-      mutate(nozero = map2_lgl(lower_2.5, upper_97.5, \(x, y) between(0, x, y)))
-full_model_fe_slope <- mixedup::extract_fixed_effects(full_model)
-summary(full_model)
-# save(full_model, file = "models/full-brms-model.RData")
-load('models/full-brms-model.RData')
-# performance::performance(full_model)
-
-### visualize model results ----
-### set color pallete for visualizations ---
+### set color palettes ----
 estuary_palette = c("Apalachicola Bay"="#e6d7b9",
                     "Charlotte Harbor"="#a7c4a0",
                     "Cedar Key"="#64a988",
                     'Northern Indian River'="#89c8d9",
                     "Northeast Florida"="#f2c6b4",
                     'Tampa Bay'='#dba5a4',
-                    "Southern Indian River"="#bfaed9",
-                    "Overall"="black")
+                    "Southern Indian River"="#bfaed9")
 
-### visualizations for species richness ---
-richness_re1 <- ggpredict(full_model,
-                           type = "re",
-                           terms = c('species_richness[-4:6 by=0.01]', 'estuary'))
-richness_re <- as.data.frame(richness_re1)
+### load necessary libraries ---
+# install.packages("librarian")
+librarian::shelf(tidyverse, readr, zoo, MuMIn, corrplot, performance, ggeffects,
+                 ggpubr, parameters, ggstats, brms, mixedup, multcompView)
 
-richness_fe1 <- ggpredict(full_model,
-                           type = "fe",
-                           terms = c('species_richness[-4:6 by=0.01]', 'estuary'))
-richness_fe <- as.data.frame(richness_fe1) |>
-      mutate(group = 'Overall')
+### read in stability dataset ----
+dat <- read_csv('local-data/key-datasets/stability_foragefish_final.csv')
+### only needed the first coding session
+# df <- read_csv('local-data/key-datasets/stability_foragefish_final.csv') |> 
+#       filter(biomass_stability <= 2) |> 
+#       mutate(coast = case_when(
+#             estuary %in% c("Northeast Florida", "Southern Indian River", 
+#                            "Northern Indian River") ~ "Atlantic Coast",
+#             TRUE ~ "Gulf Coast"
+#       ))
+# glimpse(df)
 
-richness_all <- rbind(richness_re, richness_fe)
+### read in disturbance dataset ----
+# dist <- read_csv('local-data/key-datasets/resistance-resilience-calcs.csv') |> 
+#       group_by(bay, zone) |> 
+#       summarize(resistance = mean(resistance, na.rm = TRUE),
+#                 resilience = mean(resilience_raw, na.rm = TRUE),
+#                 .groups = "drop")
+# glimpse(dist)
 
-richness_all |>
-      # mutate(group = factor(
-      #       group,
-      #       levels = c("Overall", "FCE", "MCR", "PCCC", "PCCS", "SBC", "VCR")
-      # )) |>
-      ggplot(aes(x = x, y = predicted, color = group)) +
-      geom_smooth(method = "lm", linewidth = 1.5) +
-      labs(x = 'Species Richness', y = 'Forage Fish Stability', color = 'Program') +
-      theme_classic() +
-      scale_color_manual(values = estuary_palette) +
-      theme(axis.text.x = element_text(face = "bold", color = "black", size = 12),
-            axis.text.y = element_text(face = "bold", color = "black", size = 12),
-            axis.title.x = element_text(face = "bold", color = "black", size = 14),
-            # axis.title.x = element_blank(),
-            axis.title.y = element_text(face = "bold", color = "black", size = 14),
-            # axis.title.y = element_blank(),
-            legend.position = "right",
-            legend.background = element_blank(),
-            legend.key = element_rect(fill = 'white'),
-            legend.text = element_text(face = "bold", color = "black", size = 12),
-            legend.title = element_text(face = "bold", color = "black", size = 14))
+## save new copy without stability outlier in Northeast Florida Estuary + resist/resil metrics ----
+# dat <- df |> 
+#       left_join(dist, by = join_by("bay", "zone")) |> 
+#       select(-c(resistance.x, resistance.y, resilience.x, resilience.y))
+# 
+# write_csv(dat, 'local-data/key-datasets/stability_foragefish_final.csv')
+# write_csv(dat, 'local-data/stability_foragefish_final.csv')
+# rm(df,dist)
 
-mech_fe <- full_model_fe_slope |>
-      rename(effect = term) |>
-      filter(effect != 'Intercept') |>
-      mutate(group = "Overall") |>
-      select(group, effect, value, se, lower_2.5, upper_97.5)
+### visualize stability across estuaries ----
+### simple anova
+anova_model <- aov(biomass_stability ~ estuary, data = dat)
+summary(anova_model)
+### Tukey HSD post hoc test
+tukey_result <- TukeyHSD(anova_model)
+tukey_letters <- multcompView::multcompLetters(tukey_result$estuary[,"p adj"])$Letters
 
-mech_re <- full_model_re_slope |>
-      filter(effect != "Intercept") |>
-      select(group, effect, value, se, lower_2.5, upper_97.5)
+ymax_vals <- dat |> 
+      group_by(estuary) |> 
+      summarize(ymax = max(biomass_stability, na.rm = TRUE), .groups = "drop")
 
-mech_slopes <- rbind(mech_fe, mech_re)
-glimpse(mech_slopes)
+letter_df <- data.frame(
+      estuary = names(tukey_letters),
+      cld = tukey_letters
+) |> 
+      mutate(cld = case_when(
+            estuary == "Northeast Florida" ~ "a",
+            estuary %in% c("Southern Indian River", "Apalachicola Bay") ~ "b",
+            TRUE ~ "c"
+      ))
+letter_df <- letter_df |> left_join(ymax_vals)
 
-### species richness beta plot ----
-mech_slopes |> 
-      mutate(group = case_when(
-            group == "Cedar.Key" ~ "Cedar Key",
-            group == "Charlotte.Harbor" ~ "Charlotte Harbor",
-            group == "Apalachicola.Bay" ~ "Apalachicola Bay",
-            group == "Northern.Indian.River" ~ "Northern Indian River",
-            group == "Southern.Indian.River" ~ "Southern Indian River",
-            group == "Tampa.Bay" ~ "Tampa Bay",
-            group == "Northeast.Florida" ~ "Northeast Florida",
-            TRUE ~ group
-      )) |> 
-      mutate(group = factor(group,
-                            levels = c("Cedar Key", "Charlotte Harbor", "Northern Indian River",
-                                       "Apalachicola Bay", "Southern Indian River",
-                                       "Northeast Florida", "Tampa Bay", "Overall"))) |>
-            filter(effect == "species_richness") |>
-            ggplot(aes(x = value, y = group, color = group)) +
-            geom_point(size = 3) +
-            geom_errorbarh(aes(xmin = lower_2.5, xmax = upper_97.5), size = 1, height = 0) +
-            geom_vline(xintercept = 0, size = 1) +
-            # scale_x_continuous(labels = function(x) sprintf("%.1f", x),
-            #                    limits = c(-1.1,0.3),
-            #                    breaks = seq(-0.9,0.3, by = 0.3)) +
-            labs(x = 'Species Richness Beta', y = 'Estuary', color = "Estuary") +
-            theme_classic() +
-            scale_color_manual(values = estuary_palette) +
-            theme(axis.text.x = element_text(face = "bold", color = "black", size = 12),
-                  axis.text.y = element_text(face = "bold", color = "black", size = 12),
-                  axis.title.x = element_text(face = "bold", color = "black", size = 14),
-                  # axis.title.y = element_text(face = "bold", color = "black", size = 14),
-                  axis.title.y = element_blank(),
-                  legend.position = "none",
-                  legend.background = element_blank(),
-                  legend.key = element_rect(fill = 'white'),
-                  legend.text = element_text(face = "bold", color = "black", size = 12),
-                  legend.title = element_text(face = "bold", color = "black", size = 14))
+### wrap labels for plotting
+wrapped_labels <- dat |> 
+      distinct(estuary) |> 
+      mutate(label_wrapped = str_replace(estuary, " ", "\n")) |> 
+      deframe()
 
-### max depth beta plot ----
-mech_slopes |> 
-      mutate(group = case_when(
-            group == "Cedar.Key" ~ "Cedar Key",
-            group == "Charlotte.Harbor" ~ "Charlotte Harbor",
-            group == "Apalachicola.Bay" ~ "Apalachicola Bay",
-            group == "Northern.Indian.River" ~ "Northern Indian River",
-            group == "Southern.Indian.River" ~ "Southern Indian River",
-            group == "Tampa.Bay" ~ "Tampa Bay",
-            group == "Northeast.Florida" ~ "Northeast Florida",
-            TRUE ~ group
-      )) |> 
-      mutate(group = factor(group,
-                            levels = c("Northern Indian River", "Southern Indian River",
-                                       "Charlotte Harbor", "Tampa Bay", "Apalachicola Bay",
-                                       "Cedar Key", 
-                                       "Northeast Florida", "Overall"))) |>
-      filter(effect == "depth_max") |>
-      ggplot(aes(x = value, y = group, color = group)) +
-      geom_point(size = 3) +
-      geom_errorbarh(aes(xmin = lower_2.5, xmax = upper_97.5), size = 1, height = 0) +
-      geom_vline(xintercept = 0, size = 1) +
-      # scale_x_continuous(labels = function(x) sprintf("%.1f", x),
-      #                    limits = c(-1.1,0.3),
-      #                    breaks = seq(-0.9,0.3, by = 0.3)) +
-      labs(x = 'Maximum Depth Profile Beta', y = 'Estuary', color = "Estuary") +
-      theme_classic() +
-      scale_color_manual(values = estuary_palette) +
-      theme(axis.text.x = element_text(face = "bold", color = "black", size = 12),
-            axis.text.y = element_text(face = "bold", color = "black", size = 12),
-            axis.title.x = element_text(face = "bold", color = "black", size = 14),
-            # axis.title.y = element_text(face = "bold", color = "black", size = 14),
-            axis.title.y = element_blank(),
+dat |> 
+      mutate(estuary = fct_reorder(estuary, biomass_stability, .fun = median, .desc = TRUE)) |> 
+      ggplot(aes(x = estuary, y = biomass_stability)) +
+      geom_boxplot(aes(fill = estuary), outlier.shape = NA) +
+      geom_jitter(color = "black", alpha = 0.3, size = 1) +
+      geom_text(data = letter_df, aes(x = estuary, y = ymax + 0.07, label = cld),
+                inherit.aes = FALSE, fontface = "bold", size = 4) +
+      scale_fill_manual(values = estuary_palette) +
+      scale_x_discrete(labels = wrapped_labels) + 
+      scale_y_continuous(breaks = c(0.4,0.8,1.2,1.6)) +
+      theme_bw() +
+      labs(x = "Estuary", y = "Biomass Stability", fill = "Estuary") + 
+      theme(
+            axis.text = element_text(size = 10, face = "bold", colour = "black"),
+            axis.title = element_text(size = 12, face = "bold", colour = "black"),
+            plot.title = element_text(size = 10, face = "bold", colour = "black"),
+            panel.grid.major = element_blank(),
+            panel.grid.minor = element_blank(),
+            panel.border = element_blank(),
+            panel.background = element_blank(),
+            axis.line = element_line(colour = "black"),
             legend.position = "none",
-            legend.background = element_blank(),
-            legend.key = element_rect(fill = 'white'),
-            legend.text = element_text(face = "bold", color = "black", size = 12),
-            legend.title = element_text(face = "bold", color = "black", size = 14))
+            legend.text = element_text(face = 'bold'),
+            legend.title = element_text(face = 'bold')
+      )
 
-### min depth beta plot ----
-mech_slopes |> 
-      mutate(group = case_when(
-            group == "Cedar.Key" ~ "Cedar Key",
-            group == "Charlotte.Harbor" ~ "Charlotte Harbor",
-            group == "Apalachicola.Bay" ~ "Apalachicola Bay",
-            group == "Northern.Indian.River" ~ "Northern Indian River",
-            group == "Southern.Indian.River" ~ "Southern Indian River",
-            group == "Tampa.Bay" ~ "Tampa Bay",
-            group == "Northeast.Florida" ~ "Northeast Florida",
-            TRUE ~ group
-      )) |> 
-      mutate(group = factor(group,
-                            levels = c("Northern Indian River", "Cedar Key", 
-                                       "Southern Indian River", "Apalachicola Bay",
-                                       "Northeast Florida", "Tampa Bay",
-                                       "Charlotte Harbor", "Overall"))) |>
-      filter(effect == "depth_min") |>
-      ggplot(aes(x = value, y = group, color = group)) +
-      geom_point(size = 3) +
-      geom_errorbarh(aes(xmin = lower_2.5, xmax = upper_97.5), size = 1, height = 0) +
-      geom_vline(xintercept = 0, size = 1) +
-      # scale_x_continuous(labels = function(x) sprintf("%.1f", x),
-      #                    limits = c(-1.1,0.3),
-      #                    breaks = seq(-0.9,0.3, by = 0.3)) +
-      labs(x = 'Minimum Depth Profile Beta', y = 'Estuary', color = "Estuary") +
-      theme_classic() +
-      scale_color_manual(values = estuary_palette) +
-      theme(axis.text.x = element_text(face = "bold", color = "black", size = 12),
-            axis.text.y = element_text(face = "bold", color = "black", size = 12),
-            axis.title.x = element_text(face = "bold", color = "black", size = 14),
-            # axis.title.y = element_text(face = "bold", color = "black", size = 14),
-            axis.title.y = element_blank(),
-            legend.position = "none",
-            legend.background = element_blank(),
-            legend.key = element_rect(fill = 'white'),
-            legend.text = element_text(face = "bold", color = "black", size = 12),
-            legend.title = element_text(face = "bold", color = "black", size = 14))
+# ggsave('figs/biomass-stability-by-estuary.png',
+#        dpi = 600, units= 'in', height = 4, width = 8)
 
-### k beta plot ----
-mech_slopes |> 
-      mutate(group = case_when(
-            group == "Cedar.Key" ~ "Cedar Key",
-            group == "Charlotte.Harbor" ~ "Charlotte Harbor",
-            group == "Apalachicola.Bay" ~ "Apalachicola Bay",
-            group == "Northern.Indian.River" ~ "Northern Indian River",
-            group == "Southern.Indian.River" ~ "Southern Indian River",
-            group == "Tampa.Bay" ~ "Tampa Bay",
-            group == "Northeast.Florida" ~ "Northeast Florida",
-            TRUE ~ group
-      )) |> 
-      mutate(group = factor(group,
-                            levels = c("Northern Indian River", "Cedar Key",
-                                       "Tampa Bay", "Northeast Florida",
-                                       "Apalachicola Bay", "Southern Indian River", 
-                                       "Charlotte Harbor", "Overall"))) |>
-      filter(effect == "k") |>
-      ggplot(aes(x = value, y = group, color = group)) +
-      geom_point(size = 3) +
-      geom_errorbarh(aes(xmin = lower_2.5, xmax = upper_97.5), size = 1, height = 0) +
-      geom_vline(xintercept = 0, size = 1) +
-      # scale_x_continuous(labels = function(x) sprintf("%.1f", x),
-      #                    limits = c(-1.1,0.3),
-      #                    breaks = seq(-0.9,0.3, by = 0.3)) +
-      labs(x = 'Growth Rate (K) Beta', y = 'Estuary', color = "Estuary") +
-      theme_classic() +
-      scale_color_manual(values = estuary_palette) +
-      theme(axis.text.x = element_text(face = "bold", color = "black", size = 12),
-            axis.text.y = element_text(face = "bold", color = "black", size = 12),
-            axis.title.x = element_text(face = "bold", color = "black", size = 14),
-            # axis.title.y = element_text(face = "bold", color = "black", size = 14),
-            axis.title.y = element_blank(),
-            legend.position = "none",
-            legend.background = element_blank(),
-            legend.key = element_rect(fill = 'white'),
-            legend.text = element_text(face = "bold", color = "black", size = 12),
-            legend.title = element_text(face = "bold", color = "black", size = 14))
+### scale data for models ----
+dat_scaled <- dat |>
+      select(-n_obs, -n_months, -biomass_m2_mean, -biomass_m2_sd, 
+             -abund_m2_mean, -abund_m2_sd, -biomass_cv) |> 
+      select(coast, estuary, bay, zone, grid, lat, long, 
+             start_date, end_date, biomass_stability,
+             resistance, resilience, everything()) |>
+      mutate(across(biomass_stability:resilience, \(x) scale(x, center = TRUE))) |>
+      group_by(estuary) |>
+      mutate(across(tl_max_mean:abundance_synchrony, \(x) scale(x, center = TRUE))) |>
+      ungroup() |> 
+      select(coast, estuary, bay, zone, grid, lat, long, 
+             start_date, end_date, biomass_stability,
+             resistance, resilience,
+             tl_max_mean, k_mean, gen_time_mean, depth_max_mean, depth_min_mean, 
+             temp_max_mean, temp_min_mean, troph_mean, species_richness_mean, species_evenness_mean,
+             biomass_turnover, biomass_synchrony) |> 
+      rename_with(~ str_remove(., "_mean$"), ends_with("_mean")) |> 
+      rename(species_synchrony = biomass_synchrony,
+             species_turnover = biomass_turnover,
+             growth_rate = k)
+      
+glimpse(dat_scaled)
 
-### max temp beta plot ----
-mech_slopes |> 
-      mutate(group = case_when(
-            group == "Cedar.Key" ~ "Cedar Key",
-            group == "Charlotte.Harbor" ~ "Charlotte Harbor",
-            group == "Apalachicola.Bay" ~ "Apalachicola Bay",
-            group == "Northern.Indian.River" ~ "Northern Indian River",
-            group == "Southern.Indian.River" ~ "Southern Indian River",
-            group == "Tampa.Bay" ~ "Tampa Bay",
-            group == "Northeast.Florida" ~ "Northeast Florida",
-            TRUE ~ group
-      )) |> 
-      mutate(group = factor(group,
-                            levels = c("Tampa Bay", "Northern Indian River", 
-                                       "Charlotte Harbor", "Cedar Key",
-                                       "Apalachicola Bay", "Southern Indian River", 
-                                       "Northeast Florida", "Overall"))) |>
-      filter(effect == "temp_max") |>
-      ggplot(aes(x = value, y = group, color = group)) +
-      geom_point(size = 3) +
-      geom_errorbarh(aes(xmin = lower_2.5, xmax = upper_97.5), size = 1, height = 0) +
-      geom_vline(xintercept = 0, size = 1) +
-      # scale_x_continuous(labels = function(x) sprintf("%.1f", x),
-      #                    limits = c(-1.1,0.3),
-      #                    breaks = seq(-0.9,0.3, by = 0.3)) +
-      labs(x = 'Maximum Temperature Profile Beta', y = 'Estuary', color = "Estuary") +
-      theme_classic() +
-      scale_color_manual(values = estuary_palette) +
-      theme(axis.text.x = element_text(face = "bold", color = "black", size = 12),
-            axis.text.y = element_text(face = "bold", color = "black", size = 12),
-            axis.title.x = element_text(face = "bold", color = "black", size = 14),
-            # axis.title.y = element_text(face = "bold", color = "black", size = 14),
-            axis.title.y = element_blank(),
-            legend.position = "none",
-            legend.background = element_blank(),
-            legend.key = element_rect(fill = 'white'),
-            legend.text = element_text(face = "bold", color = "black", size = 12),
-            legend.title = element_text(face = "bold", color = "black", size = 14))
+### set priors following Lemoine (2019, Ecology)
+pr = prior(normal(0, 1), class = 'b')
 
-### benthic proportion beta plot ----
-mech_slopes |> 
-      mutate(group = case_when(
-            group == "Cedar.Key" ~ "Cedar Key",
-            group == "Charlotte.Harbor" ~ "Charlotte Harbor",
-            group == "Apalachicola.Bay" ~ "Apalachicola Bay",
-            group == "Northern.Indian.River" ~ "Northern Indian River",
-            group == "Southern.Indian.River" ~ "Southern Indian River",
-            group == "Tampa.Bay" ~ "Tampa Bay",
-            group == "Northeast.Florida" ~ "Northeast Florida",
-            TRUE ~ group
-      )) |> 
-      mutate(group = factor(group,
-                            levels = c("Tampa Bay", "Charlotte Harbor", 
-                                       "Northeast Florida", "Apalachicola Bay",
-                                       "Cedar Key","Southern Indian River",
-                                       "Northern Indian River", "Overall"))) |>
-      filter(effect == "benthic_prop") |>
-      ggplot(aes(x = value, y = group, color = group)) +
-      geom_point(size = 3) +
-      geom_errorbarh(aes(xmin = lower_2.5, xmax = upper_97.5), size = 1, height = 0) +
-      geom_vline(xintercept = 0, size = 1) +
-      # scale_x_continuous(labels = function(x) sprintf("%.1f", x),
-      #                    limits = c(-1.1,0.3),
-      #                    breaks = seq(-0.9,0.3, by = 0.3)) +
-      labs(x = 'Benthic Proportion Beta', y = 'Estuary', color = "Estuary") +
-      theme_classic() +
-      scale_color_manual(values = estuary_palette) +
-      theme(axis.text.x = element_text(face = "bold", color = "black", size = 12),
-            axis.text.y = element_text(face = "bold", color = "black", size = 12),
-            axis.title.x = element_text(face = "bold", color = "black", size = 14),
-            # axis.title.y = element_text(face = "bold", color = "black", size = 14),
-            axis.title.y = element_blank(),
-            legend.position = "none",
-            legend.background = element_blank(),
-            legend.key = element_rect(fill = 'white'),
-            legend.text = element_text(face = "bold", color = "black", size = 12),
-            legend.title = element_text(face = "bold", color = "black", size = 14))
+### test out correlations ---
+test_corr <- dat_scaled |> select(-c('coast', 'estuary', 'bay', 'zone', 'grid', 
+                                     'lat', 'long','start_date', 'end_date'))
+matrix <- cor(test_corr, use = 'complete.obs')
+corrplot(matrix, method = "number", type = "lower", tl.col = "black", tl.srt = 45)
+
+df <- dat_scaled
+### clean up env ---
+rm(list = setdiff(ls(), c("df", "pr")))
+glimpse(df)
+
+### full models ----
+### correlations to be aware of
+# tl_max and growth rate
+
+# growth rate and gen_time
+# growth rate and temp_max
+# growth rate and temp_min
+
+# gen_time and depth_min
+# gen_time and temp_max
+# gen_time and temp_min
+
+# depth_min and temp_max
+# depth_min and temp_min
+
+# temp_min and temp_max 
+
+# species richness and species evenness
+### round one ----
+m1 <- brm(biomass_stability ~ tl_max + (tl_max|estuary),
+          data = df, prior = pr, warmup = 100, iter = 1000, chains = 4)
+
+m2 <- brm(biomass_stability ~ growth_rate + (growth_rate|estuary),
+          data = df, prior = pr, warmup = 100, iter = 1000, chains = 4)
+
+m3 <- brm(biomass_stability ~ gen_time + (gen_time|estuary),
+          data = df, prior = pr, warmup = 100, iter = 1000, chains = 4)
+
+m4 <- brm(biomass_stability ~ depth_max + (depth_max|estuary),
+          data = df, prior = pr, warmup = 100, iter = 1000, chains = 4)
+
+m5 <- brm(biomass_stability ~ depth_min + (depth_min|estuary),
+          data = df, prior = pr, warmup = 100, iter = 1000, chains = 4)
+
+m6 <- brm(biomass_stability ~ temp_max + (temp_max|estuary),
+          data = df, prior = pr, warmup = 100, iter = 1000, chains = 4)
+
+m7 <- brm(biomass_stability ~ temp_min + (temp_min|estuary),
+          data = df, prior = pr, warmup = 100, iter = 1000, chains = 4)
+
+m8 <- brm(biomass_stability ~ troph + (troph|estuary),
+          data = df, prior = pr, warmup = 100, iter = 1000, chains = 4)
+
+m9 <- brm(biomass_stability ~ species_richness + (species_richness|estuary),
+           data = df, prior = pr, warmup = 100, iter = 1000, chains = 4)
+
+m10 <- brm(biomass_stability ~ species_evenness + (species_evenness|estuary),
+           data = df, prior = pr, warmup = 100, iter = 1000, chains = 4)
+
+m11 <- brm(biomass_stability ~ species_turnover + (species_turnover|estuary),
+           data = df, prior = pr, warmup = 100, iter = 1000, chains = 4)
+
+m12 <- brm(biomass_stability ~ species_synchrony + (species_synchrony|estuary),
+           data = df, prior = pr, warmup = 100, iter = 1000, chains = 4)
+
+model_table <- performance::compare_performance(m1,m2,m3,m4,m5,m6,m7,m8,m9,m10,m11,m12)
+model_selection <- model_table |>
+      mutate(dWAIC = WAIC - min(WAIC))
+
+write_csv(model_selection, "tables/foragefish_brms_fullmodel_rd1.csv")
+
+### clean environment ---
+rm(list = setdiff(ls(), c("dat", "df", 'm3', 'pr')))
+
+### full models ----
+### correlations to be aware of
+# tl_max and growth rate
+
+# growth rate and gen_time
+# growth rate and temp_max
+# growth rate and temp_min
+
+# gen_time and depth_min
+# gen_time and temp_max
+# gen_time and temp_min
+
+# depth_min and temp_max
+# depth_min and temp_min
+
+# temp_min and temp_max 
+
+# species richness and species evenness
+### round two ----
+m1.3 <- brm(biomass_stability ~ tl_max + gen_time + (gen_time + tl_max|estuary),
+          data = df, prior = pr, warmup = 100, iter = 1000, chains = 4)
+
+m4.3 <- brm(biomass_stability ~ depth_max + gen_time + (gen_time + depth_max|estuary),
+          data = df, prior = pr, warmup = 100, iter = 1000, chains = 4)
+
+m8.3 <- brm(biomass_stability ~ troph +  gen_time + (gen_time + troph|estuary),
+          data = df, prior = pr, warmup = 100, iter = 1000, chains = 4)
+
+m9.3 <- brm(biomass_stability ~ species_richness + gen_time + (gen_time + species_richness|estuary),
+          data = df, prior = pr, warmup = 100, iter = 1000, chains = 4)
+
+m10.3 <- brm(biomass_stability ~ species_evenness + gen_time + (gen_time + species_evenness|estuary),
+           data = df, prior = pr, warmup = 100, iter = 1000, chains = 4)
+
+m11.3 <- brm(biomass_stability ~ species_turnover + gen_time + (gen_time + species_turnover|estuary),
+           data = df, prior = pr, warmup = 100, iter = 1000, chains = 4)
+
+m12.3 <- brm(biomass_stability ~ species_synchrony + gen_time + (gen_time + species_synchrony|estuary),
+           data = df, prior = pr, warmup = 100, iter = 1000, chains = 4)
+
+model_table <- performance::compare_performance(m1.3, m3, m4.3, m8.3, m9.3, m10.3, m11.3, m12.3)
+model_selection <- model_table |>
+      mutate(dWAIC = WAIC - min(WAIC))
+
+write_csv(model_selection, "tables/foragefish_brms_fullmodel_rd2.csv")
+
+### clean environment ---
+rm(list = setdiff(ls(), c("dat", "df", 'm10.3', 'pr')))
+
+### full models ----
+### correlations to be aware of
+# tl_max and growth rate
+
+# growth rate and gen_time
+# growth rate and temp_max
+# growth rate and temp_min
+
+# gen_time and depth_min
+# gen_time and temp_max
+# gen_time and temp_min
+
+# depth_min and temp_max
+# depth_min and temp_min
+
+# temp_min and temp_max 
+
+# species richness and species evenness
+### round three ----
+m1.3.10 <- brm(biomass_stability ~ tl_max + gen_time + species_evenness + (species_evenness + gen_time + tl_max|estuary),
+            data = df, prior = pr, warmup = 100, iter = 1000, chains = 4)
+
+m4.3.10 <- brm(biomass_stability ~ depth_max + gen_time + species_evenness + (species_evenness + gen_time + depth_max|estuary),
+            data = df, prior = pr, warmup = 100, iter = 1000, chains = 4)
+
+m8.3.10 <- brm(biomass_stability ~ troph +  gen_time + species_evenness + (species_evenness + gen_time + troph|estuary),
+            data = df, prior = pr, warmup = 100, iter = 1000, chains = 4)
+
+m11.3.10 <- brm(biomass_stability ~ species_turnover + gen_time + species_evenness + (species_evenness + gen_time + species_turnover|estuary),
+             data = df, prior = pr, warmup = 100, iter = 1000, chains = 4)
+
+m12.3.10 <- brm(biomass_stability ~ species_synchrony + gen_time + species_evenness + (species_evenness + gen_time + species_synchrony|estuary),
+             data = df, prior = pr, warmup = 100, iter = 1000, chains = 4)
+
+model_table <- performance::compare_performance(m1.3.10, m4.3.10, m8.3.10, m10.3, m11.3.10, m12.3.10)
+model_selection <- model_table |>
+      mutate(dWAIC = WAIC - min(WAIC))
+
+write_csv(model_selection, "tables/foragefish_brms_fullmodel_rd3.csv")
+
+### clean environment ---
+rm(list = setdiff(ls(), c("dat", "df", 'm1.3.10', 'pr')))
+
+### full models ----
+### correlations to be aware of
+# tl_max and growth rate
+
+# growth rate and gen_time
+# growth rate and temp_max
+# growth rate and temp_min
+
+# gen_time and depth_min
+# gen_time and temp_max
+# gen_time and temp_min
+
+# depth_min and temp_max
+# depth_min and temp_min
+
+# temp_min and temp_max 
+
+# species richness and species evenness
+### round four ----
+
+m4.3.10.1 <- brm(biomass_stability ~  tl_max + depth_max + gen_time + species_evenness + (tl_max + species_evenness + gen_time + depth_max|estuary),
+               data = df, prior = pr, warmup = 100, iter = 1000, chains = 4)
+
+m8.3.10.1 <- brm(biomass_stability ~  tl_max + troph +  gen_time + species_evenness + (tl_max + species_evenness + gen_time + troph|estuary),
+               data = df, prior = pr, warmup = 100, iter = 1000, chains = 4)
+
+m11.3.10.1 <- brm(biomass_stability ~  tl_max + species_turnover + gen_time + species_evenness + (tl_max + species_evenness + gen_time + species_turnover|estuary),
+                data = df, prior = pr, warmup = 100, iter = 1000, chains = 4)
+
+m12.3.10.1 <- brm(biomass_stability ~  tl_max + species_synchrony + gen_time + species_evenness + (tl_max + species_evenness + gen_time + species_synchrony|estuary),
+                data = df, prior = pr, warmup = 100, iter = 1000, chains = 4)
+
+model_table <- performance::compare_performance(m1.3.10, m4.3.10.1, m8.3.10.1, m11.3.10.1, m12.3.10.1)
+model_selection <- model_table |>
+      mutate(dWAIC = WAIC - min(WAIC))
+
+write_csv(model_selection, "tables/foragefish_brms_fullmodel_rd4.csv")
+
+### clean environment ---
+rm(list = setdiff(ls(), c("dat", "df", 'm12.3.10.1', 'pr')))
+
+### round five ----
+
+m4.3.10.1.12 <- brm(biomass_stability ~ species_synchrony + tl_max + depth_max + gen_time + species_evenness + (species_synchrony + tl_max + species_evenness + gen_time + depth_max|estuary),
+                 data = df, prior = pr, warmup = 100, iter = 1000, chains = 4)
+
+m8.3.10.1.12 <- brm(biomass_stability ~ species_synchrony + tl_max + troph +  gen_time + species_evenness + (species_synchrony + tl_max + species_evenness + gen_time + troph|estuary),
+                 data = df, prior = pr, warmup = 100, iter = 1000, chains = 4)
+
+m11.3.10.1.12 <- brm(biomass_stability ~ species_synchrony + tl_max + species_turnover + gen_time + species_evenness + (species_synchrony + tl_max + species_evenness + gen_time + species_turnover|estuary),
+                  data = df, prior = pr, warmup = 100, iter = 1000, chains = 4)
+
+model_table <- performance::compare_performance(m4.3.10.1.12, m8.3.10.1.12, m11.3.10.1.12, m12.3.10.1)
+model_selection <- model_table |>
+      mutate(dWAIC = WAIC - min(WAIC))
+
+write_csv(model_selection, "tables/foragefish_brms_fullmodel_rd5.csv")
+
+### clean environment ---
+rm(list = setdiff(ls(), c("dat", "df", 'm12.3.10.1', 'pr')))
+
+### save best overall model ----
+full_model <- m12.3.10.1
+full_model_re_slope <- mixedup::extract_random_coefs(full_model)
+full_model_re_slope_exp <- full_model_re_slope |>
+      mutate(nozero = map2_lgl(lower_2.5, upper_97.5, \(x, y) between(0, x, y)))
+full_model_fe_slope <- mixedup::extract_fixed_effects(full_model)
+summary(full_model)
+save(full_model, file = "models/full-foragefish-brms-model.RData")
+write_rds(full_model, 'models/full-foragefish-brms-model.rds')
