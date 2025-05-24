@@ -301,8 +301,6 @@ kruskal.test(value ~ bay, data = resil_df)
 # dunns post-hoc test
 dunnTest(value ~ bay, data = resil_df, method = "bonferroni")
 
-library(multcompView)
-
 # Manually enter adjusted p-values from your results
 pvals <- c(
       "AP-CH" = 0.3864491,
