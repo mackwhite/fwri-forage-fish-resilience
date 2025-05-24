@@ -369,5 +369,5 @@ full_model_re_slope_exp <- full_model_re_slope |>
       mutate(nozero = map2_lgl(lower_2.5, upper_97.5, \(x, y) between(0, x, y)))
 full_model_fe_slope <- mixedup::extract_fixed_effects(full_model)
 summary(full_model)
-save(full_model, file = "models/full-foragefish-brms-model.RData")
-write_rds(full_model, 'models/full-foragefish-brms-model.rds')
+# save(full_model, file = "models/full-foragefish-brms-model.RData")
+# write_rds(full_model, 'models/full-foragefish-brms-model.rds')
