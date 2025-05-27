@@ -82,11 +82,11 @@ pred_df |>
       scale_x_continuous(breaks = c(0,50,100,150,200,250,300)) +
       scale_y_continuous(breaks = c(-0.6,-0.2,0.2,0.6,1.0,1.4,1.8)) +
       geom_vline(xintercept = 40, size = 1.5, color = "red", linetype = 2) +
-      geom_vline(xintercept = 295, size = 1.5, color = "red", linetype = 2) +
+      # geom_vline(xintercept = 295, size = 1.5, color = "red", linetype = 2) +
       annotate("text", x = 60, y = 1.58, label = "40", 
                size = 5, fontface = "bold") + 
-      annotate("text", x = 320, y = 1.58, label = "295", 
-               size = 5, fontface = "bold") + 
+      # annotate("text", x = 320, y = 1.58, label = "295", 
+      #          size = 5, fontface = "bold") + 
       labs(x = "Number of Observations",
            y = "Biomass Stability") +
       theme(axis.text = element_text(size = 10, face = "bold", colour = "black"),
