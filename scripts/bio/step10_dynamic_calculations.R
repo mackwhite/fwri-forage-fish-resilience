@@ -61,63 +61,25 @@ dat <- df |>
       mutate(simple_date = make_date(year = year, month = month, day = 1))
 glimpse(dat)
 
-### detrend time series for biomass and abundance ---
-### list metrics to detrend ---
-metrics <- c("biomass", "abundance")
-
-### create de-trending function ---
-detrend_all <- function(df, metrics) {
-      df <- df |> arrange(simple_date)
-
-      if (nrow(df) < 24) {
-            for (m in metrics) {
-                  df[[paste0("detrended_", m)]] <- df[[m]]
-            }
-            return(df)
-      }
-
-      for (m in metrics) {
-            # Interpolate NA values
-            x <- na.approx(df[[m]], rule = 2, na.rm = FALSE)
-
-            # Convert to time series
-            ts_data <- ts(x, frequency = 12, start = c(min(df$year), min(df$month)))
-
-            # STL decomposition
-            fit <- stl(ts_data, s.window = "periodic")
-
-            # Save trend
-            df[[paste0("detrended_", m)]] <- as.numeric(fit$time.series[, "trend"])
-      }
-      return(df)
-}
-
-ss_detrended <- dat |>
-      group_by(estuary, zone) |>
-      group_split() |>
-      lapply(detrend_all, metrics = metrics) |>
-      bind_rows()
-glimpse(ss_detrended)
-
 ### set up dataset for calculations ---
 
-dat1 <- ss_detrended |>
-      select(site, year, year_month, scientific_name, detrended_biomass, detrended_abundance) |>
+dat1 <- dat |>
+      select(site, year, year_month, scientific_name, biomass, abundance) |>
       distinct() |>
       group_by(site, year, year_month, scientific_name) |>
       mutate(count = n()) |>
       ungroup() |>
       group_by(site, year, year_month, scientific_name) |>
-      summarize(detrended_biomass = mean(detrended_biomass, na.rm = TRUE),
-                detrended_abundance = mean(detrended_abundance, na.rm = TRUE)) |>
+      summarize(biomass = mean(biomass, na.rm = TRUE),
+                abundance = mean(abundance, na.rm = TRUE)) |>
       ungroup() |>
       group_by(site, year, scientific_name) |>
-      summarize(detrended_biomass = mean(detrended_biomass, na.rm = TRUE),
-                detrended_abundance = mean(detrended_abundance, na.rm = TRUE)) |>
-      ungroup() |>
-      mutate(detrended_biomass = detrended_biomass +9,
-             detrended_abundance = detrended_abundance + 61) |>
-      na.omit()
+      summarize(biomass = mean(biomass, na.rm = TRUE),
+                abundance = mean(abundance, na.rm = TRUE)) |>
+      ungroup() #|>
+      # mutate(biomass = biomass +9,
+      #        abundance = abundance + 61) |>
+      # na.omit()
 
 site_vector <- unique(dat1$site)
 df_temp <- data.frame(matrix(ncol = 5, nrow = length(site_vector)))
@@ -132,7 +94,7 @@ for (i in seq_along(site_vector)) {
       df_temp[i, 2] <- tryCatch({
             biomass_turnover <- turnover(
                   df = temp, time.var = "year",
-                  abundance.var = "detrended_biomass",
+                  abundance.var = "biomass",
                   species.var = "scientific_name",
                   metric = "total"
             )
@@ -143,7 +105,7 @@ for (i in seq_along(site_vector)) {
       df_temp[i, 3] <- tryCatch({
             synchrony(
                   df = temp, time.var = "year",
-                  abundance.var = "detrended_biomass",
+                  abundance.var = "biomass",
                   species.var = "scientific_name",
                   metric = "Loreau",
                   replicate.var = NA
@@ -154,7 +116,7 @@ for (i in seq_along(site_vector)) {
       df_temp[i, 4] <- tryCatch({
             abundance_turnover <- turnover(
                   df = temp, time.var = "year",
-                  abundance.var = "detrended_abundance",
+                  abundance.var = "abundance",
                   species.var = "scientific_name",
                   metric = "total"
             )
@@ -165,7 +127,7 @@ for (i in seq_along(site_vector)) {
       df_temp[i, 5] <- tryCatch({
             synchrony(
                   df = temp, time.var = "year",
-                  abundance.var = "detrended_abundance",
+                  abundance.var = "abundance",
                   species.var = "scientific_name",
                   metric = "Loreau",
                   replicate.var = NA

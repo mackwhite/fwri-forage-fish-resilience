@@ -32,14 +32,15 @@ est_abb <- c('JX', 'NIR', 'SIR', 'CH', 'TB', 'CK', 'AP')
 ### load necessary libraries ---
 # install.packages("librarian")
 librarian::shelf(tidyverse, readr, zoo, MuMIn, corrplot, performance, ggeffects,
-                 ggpubr, parameters, ggstats, brms, mixedup, multcompView, FSA, grid, patchwork)
+                 ggpubr, parameters, lme4, ggstats, brms, mixedup, multcompView, FSA, grid, patchwork)
 
 ### read in stability dataset ----
 dat <- read_csv('local-data/key-datasets/resistance-resilience-calcs.csv') |> 
-      filter(recovery_months_inflated != "yes")
+      filter(recovery_inflated != "yes")
 glimpse(dat)
 
 dat_long <- dat |> 
+      rename(resilience_raw = observed_resilience) |> 
       select(event_id, event, bay, resistance, resilience_raw) |> 
       pivot_longer(cols = c(resistance, resilience_raw),
                    names_to = 'metric', values_to = 'value')
@@ -102,7 +103,7 @@ a <- resist_df |>
       geom_text(data = letter_df, aes(x = event, y = ymax + 0.3, label = letter),
                 inherit.aes = FALSE, fontface = "bold", size = 4) +
       scale_fill_manual(values = disturbance_palette) +
-      scale_y_continuous(breaks = c(-4,-2,0,2,4,6), limits = c(-4,6.5)) +
+      # scale_y_continuous(breaks = c(-4,-2,0,2,4,6), limits = c(-4,6.5)) +
       theme(
             strip.text = element_text(size = 16, face = "bold", colour = "black"),
             strip.background = element_blank(),  
@@ -218,6 +219,33 @@ kruskal.test(value ~ bay, data = resist_df)
 # dunns post-hoc test
 dunnTest(value ~ bay, data = resist_df, method = "bonferroni")
 
+pvals <- c(
+      "AP - CH" = 5.025184e-22,
+      "AP - CK" = 1.000000e+00,
+      "CH - CK" = 3.207440e-19,
+      "AP - IR" = 5.551418e-44,
+      "CH - IR" = 3.723860e-04,
+      "CK - IR" = 2.013871e-39,
+      "AP - JX" = 1.000000e+00,
+      "CH - JX" = 2.955399e-22,
+      "CK - JX" = 1.000000e+00,
+      "IR - JX" = 2.221558e-45,
+      "AP - TB" = 9.191258e-53,
+      "CH - TB" = 4.417707e-08,
+      "CK - TB" = 1.103242e-47,
+      "IR - TB" = 1.000000e+00,
+      "JX - TB" = 1.347821e-54,
+      "AP - TQ" = 1.000000e+00,
+      "CH - TQ" = 4.159565e-12,
+      "CK - TQ" = 1.000000e+00,
+      "IR - TQ" = 1.379230e-20,
+      "JX - TQ" = 1.000000e+00,
+      "TB - TQ" = 3.001131e-24
+)
+
+cld <- multcompLetters(pvals, threshold = 0.05)
+cld$Letters
+
 ymax_vals <- resist_df |> 
       mutate(event = case_when(
             event == 'coldsnap' ~ 'Cold Snap',
@@ -232,11 +260,11 @@ ymax_vals <- resist_df |>
             TRUE ~ bay
       ))
 
-letter_df <- data.frame(
-      bay = c('AP', 'CK', 'TB', 'CH', 'SIR', 'NIR', 'JX'),
-      letter = c('a', 'a', 'a', 'a', 'a', 'a', 'a')
-) |>  
-      left_join(ymax_vals)
+# letter_df <- data.frame(
+#       bay = c('AP', 'CK', 'TB', 'CH', 'SIR', 'NIR', 'JX'),
+#       letter = c('a', 'a', 'a', 'a', 'a', 'a', 'a')
+# ) |>  
+#       left_join(ymax_vals)
 
 ### visualize resistance effects ----
 c <- resist_df |> 
@@ -257,12 +285,12 @@ c <- resist_df |>
       theme_minimal(base_size = 14) +
       theme_bw() +
       labs(x = NULL, y = NULL, fill = "Estuary", color = "Disturbance", title = "Resistance") + 
-      geom_text(data = letter_df, aes(x = bay, y = ymax + 0.3, label = letter),
-                inherit.aes = FALSE, fontface = "bold", size = 4) +
+      # geom_text(data = letter_df, aes(x = bay, y = ymax + 0.3, label = letter),
+      #           inherit.aes = FALSE, fontface = "bold", size = 4) +
       scale_fill_manual(values = estuary_palette_abb) +
       scale_color_manual(values = disturbance_palette) +
       guides(fill = "none", color = guide_legend(override.aes = list(size = 3))) +
-      scale_y_continuous(breaks = c(-4,-2,0,2,4,6), limits = c(-4,6.5)) +
+      # scale_y_continuous(breaks = c(-4,-2,0,2,4,6), limits = c(-4,6.5)) +
       theme(
             strip.text = element_text(size = 16, face = "bold", colour = "black"),
             strip.background = element_blank(),  
@@ -343,11 +371,11 @@ ymax_vals <- resil_df |>
             TRUE ~ bay
       ))
 
-letter_df <- data.frame(
-      bay = c('AP', 'CK', 'TB', 'CH', 'SIR', 'NIR', 'JX'),
-      letter = c('a,b', 'c', 'a,b', 'a,c', 'd', 'b', 'a,c')
-) |>  
-      left_join(ymax_vals)
+# letter_df <- data.frame(
+#       bay = c('AP', 'CK', 'TB', 'CH', 'SIR', 'NIR', 'JX'),
+#       letter = c('a,b', 'c', 'a,b', 'a,c', 'd', 'b', 'a,c')
+# ) |>  
+#       left_join(ymax_vals)
 
 ### visualize resistance effects ----
 d <- resil_df |> 
@@ -368,12 +396,12 @@ d <- resil_df |>
       theme_minimal(base_size = 14) +
       theme_bw() +
       labs(x = NULL, y = NULL, fill = "Estuary", color = "Disturbance", title = "Resilience") + 
-      geom_text(data = letter_df, aes(x = bay, y = ymax + 0.3, label = letter),
-                inherit.aes = FALSE, fontface = "bold", size = 4) +
+      # geom_text(data = letter_df, aes(x = bay, y = ymax + 0.3, label = letter),
+      #           inherit.aes = FALSE, fontface = "bold", size = 4) +
       scale_fill_manual(values = estuary_palette_abb) +
       scale_color_manual(values = disturbance_palette) +
       guides(fill = "none", color = guide_legend(override.aes = list(size = 3))) +
-      scale_y_continuous(breaks = c(-4,-2,0,2,4,6), limits = c(-4,6.5)) +
+      # scale_y_continuous(breaks = c(-4,-2,0,2,4,6), limits = c(-4,6.5)) +
       theme(
             strip.text = element_text(size = 16, face = "bold", colour = "black"),
             strip.background = element_blank(),  
@@ -406,8 +434,6 @@ d <- d + theme(plot.tag.position = c(0.02, 1), plot.tag = element_text(size = 14
 top_row <- a + b + plot_layout(nrow = 1)
 top_row
 
-
-
 final_plot <- (top_row / c / d) +
       plot_layout(heights = c(1,0.5,0.5)) +
       plot_annotation(tag_levels = 'a') +
@@ -425,4 +451,3 @@ grid::grid.draw(
 
 # ggsave('figs/resistance-resilience-fourpanel.png',
 #        dpi = 600, units= 'in', height = 10, width = 10)
-

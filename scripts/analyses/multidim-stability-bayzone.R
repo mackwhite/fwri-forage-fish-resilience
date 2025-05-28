@@ -39,10 +39,45 @@ cold_snap_palette = c("Moderate"="lightgrey",
 ### read in data ----
 
 discrete <- read_csv("local-data/key-datasets/discrete-detrended-forage-fish-small-seine-time-series.csv") |> 
+      mutate(simple_date = make_date(year = year, month = month, day = 1)) |> 
       group_by(bay, zone, year, month) |> 
-      summarize(across(detrended_biomass_m2 :detrended_species_evenness, \(x) mean(x)), .groups = "drop") |> 
+      summarize(across(detrended_biomass_m2:detrended_species_evenness, \(x) mean(x)), .groups = "drop") |> 
+      # summarize(across(anomaly_biomass_m2:anomaly_species_evenness, \(x) mean(x)), .groups = "drop") |> 
+      # summarize(across(biomass_m2:species_evenness, \(x) mean(x)), .groups = "drop") |> 
       filter(year >= 1996) |> 
-      rename(detrended_bm_m2 = detrended_biomass_m2)
+      mutate(detrended_bm_m2 = detrended_biomass_m2 + 2) |> 
+      filter(!is.na(detrended_bm_m2)) |> 
+      select(-detrended_biomass_m2) |> 
+      arrange(bay, zone, year, month)
+
+filled_ts <- discrete |> 
+      mutate(
+            month = as.integer(month),
+            year = as.integer(year)
+      ) |> 
+      complete(
+            bay, zone,
+            year = full_seq(year, 1),
+            month = 1:12
+      ) |> 
+      arrange(bay, zone, year, month) |> 
+      mutate(simple_date = as.Date(sprintf("%04d-%02d-01", year, month))) |> 
+      group_by(bay, zone) |> 
+      mutate(
+            detrended_bm_m2_interp = na.approx(
+                  detrended_bm_m2,
+                  x = simple_date,
+                  na.rm = FALSE 
+            )
+      ) |> 
+      ungroup() |> 
+      filter(!is.na(detrended_bm_m2_interp)) |> 
+      select(bay, zone, year, month, simple_date, detrended_bm_m2_interp) |> 
+      arrange(bay, zone, year, month)
+
+discrete <- filled_ts |> 
+      rename(detrended_bm_m2 = detrended_bm_m2_interp) |> 
+      mutate(detrended_bm_m2 = abs(detrended_bm_m2))
 
 hurricanes <- read_xlsx('local-data/hurricane-intensity-information.xlsx') |> 
       rename(bay = estuary) |> 
@@ -82,7 +117,7 @@ new <- disturbances |>
       mutate(baseline = map2(bay, start_date, \(x, date) 
                              discrete |> filter(bay == x,
                                                 between(ym(paste(year,month,sep = '-')), 
-                                                        date %m-% months(12),
+                                                        date %m-% months(3),
                                                         date %m-% months(1)))),
              b_bio = map(baseline, \(df) df |> group_by(zone) |> 
                                summarize(mean = mean(detrended_bm_m2),
@@ -115,7 +150,6 @@ new <- disturbances |>
              ### created nested data frame between resist and recover date to get resilience, mapping linear regression
              ### also need to extract bio value for that zone and stuff - dont care about all the trait stuff (so, pmap_dbl)
       )
-
 
 new_clean <- new |>
       select(-baseline) |>
@@ -151,12 +185,17 @@ glimpse(newclean2)
 ### calculating resistance and recovery ----
 
 met <- newclean2 |> 
-      mutate(resist = log1p(resist_bio_detrended_bm_m2 / b_bio_mean),
-             abs_resist = abs(resist),
-             resist_date = make_date(resist_bio_year, resist_bio_month, 1),
+      mutate(resist_date = make_date(resist_bio_year, resist_bio_month, 1),
              recover_date = make_date(recover_bio_year, recover_bio_month, 1),
-             recover_mos = lubridate::interval(resist_date, recover_date) %/% months(1)) |> 
-      filter(!is.nan(resist))
+             recover_mos = lubridate::interval(resist_date, recover_date) %/% months(1),
+             recover_days = case_when(
+                   recover_mos == 0 ~ 30,
+                   recover_mos >=1 ~ recover_mos*30
+             ),
+             recover_mos = case_when(
+                   recover_mos == 0 ~ 0.1,
+                   TRUE ~ recover_mos
+             ))
 
 ### read in disturbance data again ---
 canes <- read_csv('local-data/hurricane-intensity-information.csv')
@@ -189,80 +228,41 @@ hw_clean <- hw  |>
 
 stressors_combined <- bind_rows(canes_clean, cs_clean, hw_clean)
 
+scale_vars <- c("hurricane_category", "hurricane_wind_kts", "duration",
+                "max_anomaly", "mean_anomaly", "cum_anomaly")
+
+# Min-max scaling function that handles NAs
+min_max_scale <- function(x) {
+      rng <- range(x, na.rm = TRUE)
+      scaled <- (x - rng[1]) / (rng[2] - rng[1])
+      scaled * 9 + 1
+}
+
 met_dist <- met |> 
-      left_join(stressors_combined, by = c("bay", "event_id", "event"))
+      left_join(stressors_combined, by = c("bay", "event_id", "event")) |> 
+      mutate(across(all_of(scale_vars), min_max_scale))
 
 ### standardized for stressor (only) below - this code works ----
-# stressor_vars <- c(
-#       "hurricane_wind_kts",
-#       "hurricane_category",
-#       "duration",
-#       "max_anomaly",
-#       "mean_anomaly",
-#       "cum_anomaly"
-# )
-# 
-# met_dist <- met_dist |> 
-#       mutate(
-#             # Avoid division by zero for resilience
-#             recover_mos_adj = if_else(recover_mos == 0, 0.1, recover_mos),
-#             
-#             # Calculate LRR once
-#             lrr = log((abs(resist_bio_detrended_bm_m2 - b_bio_mean) + b_bio_mean) / b_bio_mean),
-#             
-#             # Calculate resilience
-#             resilience = log((abs(recover_bio_detrended_bm_m2 - b_bio_mean) + b_bio_mean) / 
-#                                    (b_bio_mean * recover_mos_adj))
-#       )
-# 
-# # Add resistance for each stressor
-# for (var in stressor_vars) {
-#       new_name <- paste0("resistance_", var)
-#       met_dist[[new_name]] <- with(met_dist, ifelse(!is.na(get(var)),
-#                                                     -1 * log(lrr / get(var)),
-#                                                     NA_real_))
-# }
-# 
-# met_dist_long <- met_dist |> 
-#       pivot_longer(
-#             cols = starts_with("resistance_"),
-#             names_to = "stressor_type",
-#             names_prefix = "resistance_",
-#             values_to = "resistance"
-#       ) |> 
-#       filter(!is.na(resistance)) |> 
-#       mutate(recovery_months_inflated = case_when(
-#             recover_mos_adj == 0.1 ~ 'yes',
-#             TRUE ~ 'no'
-#       ))
-
-### trying with raw and standardized metrics ----
 stressor_vars <- c(
       "hurricane_wind_kts",
-      "hurricane_category",
-      "duration",
-      "max_anomaly",
-      "mean_anomaly",
+      # "hurricane_category",
+      # "duration",
+      # "max_anomaly",
+      # "mean_anomaly",
       "cum_anomaly"
 )
 
-met_dist <- met_dist |> 
+met_dist <- met_dist |>
       mutate(
-            # Adjust for 0 recovery time
-            recover_mos_adj = if_else(recover_mos == 0, 0.1, recover_mos),
-            
-            # Log response ratio (effect size)
-            lrr = log((abs(resist_bio_detrended_bm_m2 - b_bio_mean) + b_bio_mean) / b_bio_mean),
-            
-            # Non-standardized resistance
-            resistance_raw = -1 * lrr,
-            
-            # Resilience (already non-standardized with respect to stressor)
-            resilience_raw = log((abs(recover_bio_detrended_bm_m2 - b_bio_mean) + b_bio_mean) /
-                                       (b_bio_mean * recover_mos_adj))
+
+            # Calculate LRR once
+            lrr = log((((abs(resist_bio_detrended_bm_m2 - b_bio_mean)) + b_bio_mean)) / b_bio_mean),
+
+            # Calculate resilience
+            observed_resilience = log(((((abs(resist_bio_detrended_bm_m2 - b_bio_mean)) + b_bio_mean)) / b_bio_mean) / (recover_mos))
       )
 
-### standardized resistance for each stressor
+# Add resistance for each stressor
 for (var in stressor_vars) {
       new_name <- paste0("resistance_", var)
       met_dist[[new_name]] <- with(met_dist, ifelse(!is.na(get(var)),
@@ -270,23 +270,26 @@ for (var in stressor_vars) {
                                                     NA_real_))
 }
 
-### long format for standardized ----
-met_dist_long <- met_dist |> 
+met_dist_long <- met_dist |>
       pivot_longer(
-            cols = starts_with("resistance_") & !starts_with("resistance_raw"),
+            cols = starts_with("resistance_"),
             names_to = "stressor_type",
             names_prefix = "resistance_",
             values_to = "resistance"
-      ) |> 
-      filter(!is.na(resistance)) |> 
-      mutate(recovery_months_inflated = if_else(recover_mos_adj == 0.1, "yes", "no"))
+      ) |>
+      filter(!is.na(resistance)) |>
+      # filter(resistance >= 0) |> 
+      mutate(recovery_inflated = case_when(
+            recover_mos == 0.1 ~ 'yes',
+            TRUE ~ 'no'
+      ))
 
 met_dist_long |> 
-      filter(recovery_months_inflated != "yes") |> 
-      filter(resistance_raw >= -1.5) |> 
-      ggplot(aes(x = resilience_raw, y = resistance_raw)) +
-      geom_point() +
-      geom_smooth(method = "lm", se = FALSE) +
-      facet_wrap(~bay)
+      # filter(recovery_inflated == 'yes') |>
+      ggplot(aes(x = observed_resilience, y = resistance, color = event)) +
+      geom_point()
+
+final <- met_dist_long |> filter(resistance >= 0)
 
 write_csv(met_dist_long, 'local-data/key-datasets/resistance-resilience-calcs.csv')
+glimpse(met_dist_long)

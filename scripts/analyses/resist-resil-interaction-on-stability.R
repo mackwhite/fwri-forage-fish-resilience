@@ -67,14 +67,14 @@ summary <- dat |>
             max_resilience = max(resilience, na.rm = TRUE)
       )
 
-resist <- gam(y ~ s(resistance, k = 2) + s(estuary, bs = "re"),
+resist <- gam(y ~ s(resistance),
             family = gaussian(link = 'log'),
             data = dat,
             method = "REML")
 concurvity(resist)
 performance(resist)
 
-resil <- gam(y ~ s(resilience, k = 2) + s(estuary, bs = "re"),
+resil <- gam(y ~ s(resilience),
               family = gaussian(link = 'log'),
               data = dat,
               method = "REML")
@@ -218,30 +218,47 @@ cor(dat$resilience, dat$resistance)
 ### bayesian regression models ----
 
 df <- dat |> 
-      mutate(across(resistance:resilience, \(x) scale(x, center = TRUE))) 
+      group_by(estuary, zone) |> 
+      summarize(y = mean(y),
+                resistance = mean(resistance),
+                resilience = mean(resilience),
+                .groups = 'drop') |> 
+      mutate(y = scale(y, center = TRUE)) |> 
+      mutate(across(resistance:resilience, \(x) scale(x, center = TRUE)))
+
 ### set priors following Lemoine (2019, Ecology)
 pr = prior(normal(0, 1), class = 'b')
 
 m1 <- brm(y ~ resistance + (resistance|estuary),
-          data = df, prior = pr, warmup = 100, iter = 1000, chains = 4)
+          data = df, prior = pr, warmup = 1000, iter = 100000, chains = 4)
 
 m2 <- brm(y ~ resilience + (resilience|estuary),
-          data = df, prior = pr, warmup = 100, iter = 1000, chains = 4)
+          data = df, prior = pr, warmup = 1000, iter = 100000, chains = 4)
 
-m3 <- brm(y ~ resistance + resilience + (resistance + resilience | estuary),
-          data = df, prior = pr, warmup = 100, iter = 1000, chains = 4)
+m3 <- brm(y ~ resistance + resilience + (resistance + resilience| estuary),
+          data = df, prior = pr, warmup = 1000, iter = 100000, chains = 4)
 
-model_table <- performance::compare_performance(m1,m2,m3)
-model_selection <- model_table |>
-      mutate(dWAIC = WAIC - min(WAIC))
+model_list <- list(
+      m1 = m1,
+      m2 = m2, 
+      m3 = m3
+)
 
-write_csv(model_selection, "tables/foragefish_brms_stabilityresistresil.csv")
+waic_table <- tibble(
+      model = names(model_list),
+      formula = map_chr(model_list, ~ paste(deparse(formula(.x)), collapse = " ")),
+      waic = map_dbl(model_list, ~ waic(.x)$estimates["waic", "Estimate"])
+) |> 
+      arrange(waic) |> 
+      mutate(delta_waic = waic - min(waic))
 
-save(m3, file = "models/stability-resist-resil-brmsmodel.RData")
-write_rds(m3, 'models/stability-resist-resil-brmsmodel.rds')
+write_csv(waic_table, "tables/foragefish_brms_stabilityresistresil.csv")
 
-rm(list = setdiff(ls(), c("dat", "m3")))
-mod <- m3
+save(m1, file = "models/stability-resist-resil-brmsmodel.RData")
+write_rds(m1, 'models/stability-resist-resil-brmsmodel.rds')
+
+rm(list = setdiff(ls(), c("dat", "m1")))
+mod <- readRDS('models/stability-resist-resil-brmsmodel.rds')
 # summary stats -----------------------------------------------------------
 post = posterior_samples(mod)
 
@@ -253,15 +270,6 @@ mean(post$`r_estuary[Tampa.Bay,resistance]` + post$b_resistance < 0)
 mean(post$`r_estuary[Charlotte.Harbor,resistance]` + post$b_resistance < 0)
 mean(post$`r_estuary[Cedar.Key,resistance]` + post$b_resistance < 0)
 mean(post$`r_estuary[Northern.Indian.River,resistance]` + post$b_resistance < 0)
-
-### resilience ----
-mean(post$`r_estuary[Northeast.Florida,resilience]` + post$b_resilience < 0)
-mean(post$`r_estuary[Southern.Indian.River,resilience]` + post$b_resilience < 0)
-mean(post$`r_estuary[Apalachicola.Bay,resilience]` + post$b_resilience < 0)
-mean(post$`r_estuary[Tampa.Bay,resilience]` + post$b_resilience < 0)
-mean(post$`r_estuary[Charlotte.Harbor,resilience]` + post$b_resilience < 0)
-mean(post$`r_estuary[Cedar.Key,resilience]` + post$b_resilience < 0)
-mean(post$`r_estuary[Northern.Indian.River,resilience]` + post$b_resilience < 0)
 
 # resistance visualizations ------------------------------------------
 
@@ -341,12 +349,12 @@ df <- dat_scaled |>
       left_join(dat) |> 
       mutate(estuary = factor(estuary, levels = est)) 
 
-a = df |>
+a <- df |>
       ggplot(aes(value, stab, color = estuary))+
       geom_point(data = raw, aes(value, stab, color = estuary), size = 2) +
       geom_line(linewidth = 1.75) +
       scale_color_manual(values = estuary_palette) +
-      labs(y = 'Biomass Stability', title = 'Resistance', x = NULL)+
+      labs(y = 'Biomass Stability', title = NULL, x = "Resistance")+
       theme_classic()+
       theme(axis.text.x = element_text(face = "bold", color = "black", size = 12),
             axis.text.y = element_text(face = "bold", color = "black", size = 12),
@@ -387,9 +395,9 @@ b = df_beta |>
       geom_hline(aes(yintercept = 0), linetype = "dashed", linewidth = 0.75) +
       geom_pointrange(aes(ymin = lower_10, ymax = upper_90), linewidth = 2)+
       geom_pointrange(aes(ymin = lower_2.5, ymax = upper_97.5), linewidth = 1, size = .9) +
-      labs(y = 'Beta', x = 'Estuary')+
+      labs(y = 'Beta', x = NULL, title = NULL)+
       scale_color_manual(values = estuary_palette_abb) +
-      scale_y_continuous(breaks = c(-0.8, -0.6, -0.4, -0.2, 0.0, 0.2, 0.4), limits = c(-0.8, 0.5)) +
+      # scale_y_continuous(breaks = c(-0.8, -0.6, -0.4, -0.2, 0.0, 0.2, 0.4), limits = c(-0.8, 0.5)) +
       coord_flip()+
       theme_classic()+
       theme(axis.text.x = element_text(face = "bold", color = "black", size = 12),
@@ -405,94 +413,41 @@ b
 
 ggpubr::ggarrange(a,b, align = 'h')
 
-### clean environment ----
-rm(list = setdiff(ls(), c("a", "b", 'mod', 'est', 'estuary_palette', 'est_abb', 'estuary_palette_abb')))
-
-# resilience visualizations ------------------------------------------
-
-# random effects
-re95 = mixedup::extract_random_coefs(mod, ci_level = c(0.95)) |> 
-      filter(effect %in% c('Intercept', 'resilience'))
-re80 = mixedup::extract_random_coefs(mod, ci_level = c(0.8)) |> 
-      filter(effect %in% c('Intercept', 'resilience'))
-
-re_beta = left_join(re95, re80) |> 
-      rename(term = effect,
-             estuary = group)
-
-# fixed effects
-fe95 = mixedup::extract_fixed_effects(mod, ci_level = c(0.95)) |> 
-      filter(term %in% c('Intercept', 'resilience'))
-
-fe80 = mixedup::extract_fixed_effects(mod, ci_level = c(0.8)) |> 
-      filter(term %in% c('Intercept', 'resilience'))
-
-fe_beta = left_join(fe95, fe80) |> 
-      mutate(estuary = 'Overall') 
-
-df_beta = bind_rows(re_beta, fe_beta) |> 
-      filter(term != 'Intercept') |> 
-      mutate(estuary = case_when(
-            estuary == "Northeast.Florida" ~ "Northeast Florida",
-            estuary == "Southern.Indian.River" ~ "Southern Indian River",
-            estuary == "Apalachicola.Bay" ~ "Apalachicola Bay",
-            estuary == "Tampa.Bay" ~ "Tampa Bay",
-            estuary == "Charlotte.Harbor" ~ "Charlotte Harbor",
-            estuary == "Cedar.Key" ~ "Cedar Key", 
-            estuary == "Northern.Indian.River" ~ "Northern Indian River",
-      )) |> 
-      mutate(estuary = factor(estuary, levels = est)) |> 
-      filter(!is.na(estuary))
-
-# make equation data set
-df_eq = bind_rows(re_beta, fe_beta) |> 
-      select(term, estuary, value) |> 
-      pivot_wider(names_from = term, values_from = value)  |> 
-      rename(beta = resilience) |> 
-      mutate(estuary = case_when(
-            estuary == "Northeast.Florida" ~ "Northeast Florida",
-            estuary == "Southern.Indian.River" ~ "Southern Indian River",
-            estuary == "Apalachicola.Bay" ~ "Apalachicola Bay",
-            estuary == "Tampa.Bay" ~ "Tampa Bay",
-            estuary == "Charlotte.Harbor" ~ "Charlotte Harbor",
-            estuary == "Cedar.Key" ~ "Cedar Key", 
-            estuary == "Northern.Indian.River" ~ "Northern Indian River",
-      )) |> 
-      filter(!is.na(estuary))
-
 dat <- read_csv('local-data/key-datasets/stability_foragefish_final.csv') |> 
-      select(estuary,
-             value = resilience) |>
-      distinct() |> 
-      group_by(estuary) |> 
-      mutate(scaled = scale(value)) |> 
-      slice(c(which.min(scaled), which.max(scaled))) |> 
-      ungroup()
+      mutate(estuary = as.factor(estuary),
+             y = biomass_stability) |> 
+      group_by(estuary, zone) |> 
+      summarize(y = mean(y), 
+                resistance = mean(resistance),
+                resilience = mean(resilience),
+                .groups = 'drop')
+glimpse(dat)
 
-dat_scaled = dat |>
-      group_by(estuary, scaled) |> 
-      mutate(i = row_number()) |> 
-      select(estuary, scaled)
+m1 <- lm(y ~ resistance, data = dat)
+summary(m1)
 
-raw <- read_csv('local-data/key-datasets/stability_foragefish_final.csv') |> 
-      select(estuary,
-             value = resilience,
-             stab = biomass_stability)
+m2 <- lm(y ~ resilience, data = dat)
+summary(m2)
 
-df <- dat_scaled |> 
-      left_join(df_eq) |> 
-      mutate(pred = beta*scaled + Intercept,
-             stab = pred*sd(raw$stab) + mean(raw$stab)) |> 
-      left_join(dat) |> 
-      mutate(estuary = factor(estuary, levels = est)) 
+m3 <- lm(resistance ~ resilience, data = dat)
+summary(m3)
 
-c = df |>
-      ggplot(aes(value, stab, color = estuary))+
-      geom_point(data = raw, aes(value, stab, color = estuary), size = 2) +
-      geom_line(linewidth = 1.75) +
+c <- dat |> 
+      ggplot(aes(x = resistance, y = y)) +
+      geom_jitter(aes(color = estuary), alpha = 1, size = 2.5) +
+      geom_smooth(method = "lm", se = TRUE, color = "black") +
+      scale_fill_manual(values = estuary_palette) +
       scale_color_manual(values = estuary_palette) +
-      labs(y = 'Biomass Stability', title = 'Resilience', x = NULL)+
-      theme_classic()+
+      labs(y = 'Biomass Stability', x = 'Resistance', title = NULL) +
+      annotate('text',
+               x = 3.2, y = 0.6,
+               label = bquote({R^2} == 0.34),
+               size = 3.2) +
+      annotate('text',
+               x = 3.25, y = 0.57,
+               label = bquote(italic(p) < 6 %*% 10^-5),
+               size = 3.2) +
+      theme_classic() +
       theme(axis.text.x = element_text(face = "bold", color = "black", size = 12),
             axis.text.y = element_text(face = "bold", color = "black", size = 12),
             plot.title = element_text(face = "bold", color = "black", size = 14, hjust = 0.5),
@@ -502,120 +457,100 @@ c = df |>
             strip.background = element_blank(),
             legend.position = "none",
             legend.text = element_text(face = "bold", color = "black", size = 12),
-            legend.title = element_text(face = "bold", color = "black", size = 14))
-c
+            legend.title = element_text(face = "bold", color = "black", size = 12))
 
-raw <- raw |> 
-      mutate(estuary = case_when(
-            estuary == "Northeast Florida" ~ "JX",
-            estuary == "Southern Indian River" ~ "SIR",
-            estuary == "Apalachicola Bay" ~ "AP",
-            estuary == "Tampa Bay" ~ "TB",
-            estuary == "Charlotte Harbor" ~ "CH",
-            estuary == "Cedar Key" ~ "CK",
-            estuary == "Northern Indian River" ~ "NIR"
-      )) |>
-      mutate(estuary = factor(estuary, levels = est_abb))
-
-d = df_beta |> 
-      mutate(estuary = case_when(
-            estuary == "Northeast Florida" ~ "JX",
-            estuary == "Southern Indian River" ~ "SIR",
-            estuary == "Apalachicola Bay" ~ "AP",
-            estuary == "Tampa Bay" ~ "TB",
-            estuary == "Charlotte Harbor" ~ "CH",
-            estuary == "Cedar Key" ~ "CK",
-            estuary == "Northern Indian River" ~ "NIR"
-      )) |>
-      mutate(estuary = factor(estuary, levels = est_abb)) |> 
-      ggplot(aes(estuary, value, color = estuary)) +
-      geom_hline(aes(yintercept = 0), linetype = "dashed", linewidth = 0.75) +
-      geom_pointrange(aes(ymin = lower_10, ymax = upper_90), linewidth = 2)+
-      geom_pointrange(aes(ymin = lower_2.5, ymax = upper_97.5), linewidth = 1, size = .9) +
-      labs(y = 'Beta', x = 'Estuary')+
-      scale_color_manual(values = estuary_palette_abb) +
-      # scale_y_continuous(breaks = c(-1.0, -0.5, 0.0, 0.5, 1.0, 1.5), limits = c(-1.0, 1.52)) +
-      coord_flip()+
-      theme_classic()+
+d <- dat |> 
+      ggplot(aes(x = resilience, y = y)) +
+      geom_jitter(aes(color = estuary), alpha = 1, size = 2.5) +
+      geom_smooth(method = "lm", se = TRUE, color = "black") +
+      scale_fill_manual(values = estuary_palette) +
+      scale_color_manual(values = estuary_palette) +
+      labs(y = 'Biomass Stability', x = 'Resilience', title = NULL) +
+      annotate('text',
+               x = -1.1, y = 0.6,
+               label = bquote({R^2} < 0.01),
+               size = 3.2) +
+      annotate('text',
+               x = -1.1, y = 0.57,
+               label = bquote(italic(p) == 0.988),
+               size = 3.2) +
+      theme_classic() +
       theme(axis.text.x = element_text(face = "bold", color = "black", size = 12),
             axis.text.y = element_text(face = "bold", color = "black", size = 12),
+            plot.title = element_text(face = "bold", color = "black", size = 14, hjust = 0.5),
             axis.title.x = element_text(face = "bold", color = "black", size = 14),
             axis.title.y = element_text(face = "bold", color = "black", size = 14),
-            strip.text = element_text(face = "bold", color = "black", size = 12),
+            strip.text = element_blank(),
+            strip.background = element_blank(),
             legend.position = "none",
-            legend.background = element_blank(),
             legend.text = element_text(face = "bold", color = "black", size = 12),
-            legend.title = element_text(face = "bold", color = "black", size = 14))
-d
+            legend.title = element_text(face = "bold", color = "black", size = 12))
 
-ggpubr::ggarrange(a,b, align = 'h')
+e <- dat |> 
+      ggplot(aes(x = resilience, y = resistance)) +
+      geom_jitter(aes(color = estuary), alpha = 1, size = 2.5) +
+      geom_smooth(method = "lm", se = TRUE, color = "black") +
+      scale_fill_manual(values = estuary_palette) +
+      scale_color_manual(values = estuary_palette) +
+      labs(y = 'Resistance', x = 'Resilience', title = NULL) +
+      annotate('text',
+               x = -1.1, y = 6.3,
+               label = bquote({R^2} < 0.01),
+               size = 3.2) +
+      annotate('text',
+               x = -1.1, y = 6.0,
+               label = bquote(italic(p) == 0.646),
+               size = 3.2) +
+      theme_classic() +
+      theme(axis.text.x = element_text(face = "bold", color = "black", size = 12),
+            axis.text.y = element_text(face = "bold", color = "black", size = 12),
+            plot.title = element_text(face = "bold", color = "black", size = 14, hjust = 0.5),
+            axis.title.x = element_text(face = "bold", color = "black", size = 14),
+            axis.title.y = element_text(face = "bold", color = "black", size = 14),
+            strip.text = element_blank(),
+            strip.background = element_blank(),
+            legend.position = "none",
+            legend.text = element_text(face = "bold", color = "black", size = 12),
+            legend.title = element_text(face = "bold", color = "black", size = 12))
 
 ### clean environment ----
-rm(list = setdiff(ls(), c("a", "b", "c", "d", 'mod', 'est', 'estuary_palette', 'est_abb', 'estuary_palette_abb')))
+rm(list = setdiff(ls(), c("a", "b", "c", "d", "e", 'mod', 'df', 'est', 'estuary_palette', 'est_abb', 'estuary_palette_abb')))
+a
+b
+c
+d
+e
 
-top <- a + c + plot_layout(nrow = 1, guides = "collect") & theme(legend.position = "none")
-bot <- b + d + plot_layout(nrow = 1, guides = "collect") & theme(legend.position = "none")
-
-final_plot <- top / bot + plot_layout(heights = c(1, 1))
-final_plot
 
 # Remove redundant axis titles
-a <- a + labs(y = NULL) + labs(tag = "a") + theme(plot.tag = element_text(size = 14, face = "bold"),
+a <- a + labs(tag = "a") + theme(plot.tag = element_text(size = 14, face = "bold"),
                                                   plot.tag.position = c(0.02, 1))
-c <- c + labs(y = NULL)
 
-b <- b + labs(y = NULL, x = NULL) + labs(tag = "b") + theme(plot.tag = element_text(size = 14, face = "bold"),
+b <- b + labs(tag = "b") + theme(plot.tag = element_text(size = 14, face = "bold"),
                                                             plot.tag.position = c(0.02, 1))
-d <- d + labs(y = NULL, x = NULL)
 
-# Create row layouts
-top_row <- a + c + plot_layout(nrow = 1) 
-bot_row <- b + d + plot_layout(nrow = 1)
+top <- a + b + plot_layout(nrow = 1, guides = "collect") & theme(legend.position = "none",
+                                                                 plot.margin = margin(10, 10, 10, 10))
 
-# Combine with a shared y-axis and x-axis annotation
-final_plot <- (top_row / bot_row) +
-      plot_layout(heights = c(1, 1)) +
-      plot_annotation() +
-      theme(legend.position = "none")
+bot <- c + d + e + plot_layout(nrow = 1, guides = "collect") & theme(legend.position = "none",
+                                                                     plot.margin = margin(10, 10, 10, 10))
 
+final_plot <- top / bot +
+      plot_layout(heights = c(0.65, 0.35)) 
+      
+final_plot
+# r2(mod)
 # Add shared axis labels using annotation
-final_plot <- final_plot +
-      plot_annotation(
-            title = NULL,
-            subtitle = NULL,
-            caption = NULL,
-            theme = theme(
-                  plot.margin = margin(10, 10, 10, 10)
-            )
-      ) &
-      theme(
-            plot.title = element_text(hjust = 0.5),
-            axis.title.y = element_blank(),
-            axis.title.x = element_blank()
-      )
-
 grid::grid.newpage()
 grid::grid.draw(
       patchwork::wrap_elements(full = final_plot) +
             
-            # Y-axis label for the top row (Biomass Stability)
+            # Add R2 and Marginal R2 at bottom center
             patchwork::inset_element(
-                  grid::textGrob("Biomass Stability", rot = 90, gp = gpar(fontsize = 14, fontface = "bold")),
-                  left = 0, bottom = 0.55, right = 0.02, top = 0.95, align_to = "full"
-            ) +
-            
-            # X-axis label for the bottom row (Beta)
-            patchwork::inset_element(
-                  grid::textGrob("Beta", gp = gpar(fontsize = 14, fontface = "bold")),
-                  left = 0.3, bottom = 0.0, right = 0.7, top = 0.03, align_to = "full"
-            ) +
-            
-            # Y-axis label for the bottom row (Estuary)
-            patchwork::inset_element(
-                  grid::textGrob("Estuary", rot = 90, gp = gpar(fontsize = 14, fontface = "bold")),
-                  left = 0, bottom = 0.05, right = 0.019, top = 0.45, align_to = "full"
+                  grid::textGrob("R² = 0.52; Marginal R² = 0.14", gp = gpar(fontsize = 12, fontface = "italic")),
+                  left = 0.25, bottom = 0.99, right = 0.75, top = 1.00, align_to = "full"
             )
 )
 
-ggsave('figs/brms-resist-resil-model-output-two-panel.png',
-       dpi = 600, units= 'in', height = 7, width = 7)
+ggsave('figs/resist-resilience-five-panel.png',
+       dpi = 600, units= 'in', height = 7, width = 9)

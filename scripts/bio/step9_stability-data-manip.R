@@ -39,6 +39,10 @@ cold_snap_palette = c("Moderate"="lightgrey",
 full <- read_csv("local-data/key-datasets/discrete-detrended-forage-fish-small-seine-time-series.csv")
 
 detrended_summary <- full |> 
+      select(-simple_date) |> 
+      rename_with(.cols = abund_m2:sample_do2, 
+                  .fn = ~ paste0("raw_", .x)) |> 
+      mutate(simple_date = make_date(year = year, month = month, day = 1)) |> 
       group_by(estuary, bay, zone, grid) |> 
       summarize(
             n_obs = n(),  # number of rows (monthly samples)
@@ -46,7 +50,7 @@ detrended_summary <- full |>
             end_date = max(simple_date, na.rm = TRUE),
             n_months = lubridate::interval(start_date, end_date) %/% months(1) + 1,
             across(
-                  starts_with("detrended_"),
+                  starts_with("raw"),
                   list(
                         mean = ~mean(.x, na.rm = TRUE),
                         sd   = ~sd(.x, na.rm = TRUE)
@@ -54,12 +58,8 @@ detrended_summary <- full |>
                   .names = "{.col}_{.fn}"
             ),
             .groups = "drop") |> 
-      rename_with(
-            ~ str_remove(., "^detrended_"),
-            .cols = starts_with("detrended_")
-      ) |> 
       filter(n_obs > 1) |> 
-      mutate(biomass_cv = biomass_m2_sd/biomass_m2_mean,
+      mutate(biomass_cv = raw_biomass_m2_sd/raw_biomass_m2_mean,
              biomass_stability = 1/biomass_cv)
 
 ### identify breakpoint in relatinship between sample size and stability ----
@@ -105,7 +105,7 @@ ggsave('figs/stability-samplesize-threshold.png',
        dpi = 600, units= 'in', height = 5, width = 5)
 
 df_filtered <- detrended_summary |> 
-      filter(n_obs >= 40 & n_obs <= 295)
+      filter(n_obs >= 40)
 glimpse(df_filtered)
 
 coords <- read_rds('local-data/key-datasets/forage_fish_master.RDS') |> 
@@ -117,4 +117,4 @@ coords <- read_rds('local-data/key-datasets/forage_fish_master.RDS') |>
                 .groups = "drop")
 
 df_final <- df_filtered |> left_join(coords)
-write_csv(df_final, "local-data/stability-filterd-may2025.csv")
+write_csv(df_final, "local-data/stability-filtered-may2025.csv")

@@ -33,18 +33,19 @@ est_abb <- c('AP', 'CK', 'TB', 'CH', 'SIR', 'NIR', 'JX')
 librarian::shelf(tidyverse, readr, zoo, MuMIn, corrplot, performance, ggeffects,
                  ggpubr, patchwork, parameters, ggstats, brms, mixedup, multcompView, grid)
 
-### read in stability dataset and summarize to determine order of estuaries in vis ----
-stability <- read_csv('local-data/key-datasets/stability_foragefish_final.csv')
-order <- read_csv('local-data/key-datasets/stability_foragefish_final.csv') |> 
-      group_by(estuary) |> 
-      summarize(mn = mean(biomass_stability),
-                med = median(biomass_stability)) |> 
-      arrange(mn)
-
 mod = readRDS('models/full-foragefish-brms-model.rds')
 
 # summary stats -----------------------------------------------------------
 post = posterior_samples(mod)
+
+### species synchrony ----
+mean(post$`r_estuary[Northeast.Florida,species_synchrony]` + post$b_species_synchrony < 0)
+mean(post$`r_estuary[Southern.Indian.River,species_synchrony]` + post$b_species_synchrony < 0)
+mean(post$`r_estuary[Apalachicola.Bay,species_synchrony]` + post$b_species_synchrony < 0)
+mean(post$`r_estuary[Tampa.Bay,species_synchrony]` + post$b_species_synchrony < 0)
+mean(post$`r_estuary[Charlotte.Harbor,species_synchrony]` + post$b_species_synchrony < 0)
+mean(post$`r_estuary[Cedar.Key,species_synchrony]` + post$b_species_synchrony < 0)
+mean(post$`r_estuary[Northern.Indian.River,species_synchrony]` + post$b_species_synchrony < 0)
 
 ### generation time ----
 mean(post$`r_estuary[Northeast.Florida,gen_time]` + post$b_gen_time < 0)
@@ -55,32 +56,23 @@ mean(post$`r_estuary[Charlotte.Harbor,gen_time]` + post$b_gen_time < 0)
 mean(post$`r_estuary[Cedar.Key,gen_time]` + post$b_gen_time < 0)
 mean(post$`r_estuary[Northern.Indian.River,gen_time]` + post$b_gen_time < 0)
 
-### species evenness ----
-mean(post$`r_estuary[Northeast.Florida,species_evenness]` + post$b_species_evenness < 0)
-mean(post$`r_estuary[Southern.Indian.River,species_evenness]` + post$b_species_evenness < 0)
-mean(post$`r_estuary[Apalachicola.Bay,species_evenness]` + post$b_species_evenness < 0)
-mean(post$`r_estuary[Tampa.Bay,species_evenness]` + post$b_species_evenness < 0)
-mean(post$`r_estuary[Charlotte.Harbor,species_evenness]` + post$b_species_evenness < 0)
-mean(post$`r_estuary[Cedar.Key,species_evenness]` + post$b_species_evenness < 0)
-mean(post$`r_estuary[Northern.Indian.River,species_evenness]` + post$b_species_evenness < 0)
+### depth min ----
+mean(post$`r_estuary[Northeast.Florida,depth_min]` + post$b_depth_min < 0)
+mean(post$`r_estuary[Southern.Indian.River,depth_min]` + post$b_depth_min < 0)
+mean(post$`r_estuary[Apalachicola.Bay,depth_min]` + post$b_depth_min < 0)
+mean(post$`r_estuary[Tampa.Bay,depth_min]` + post$b_depth_min < 0)
+mean(post$`r_estuary[Charlotte.Harbor,depth_min]` + post$b_depth_min < 0)
+mean(post$`r_estuary[Cedar.Key,depth_min]` + post$b_depth_min < 0)
+mean(post$`r_estuary[Northern.Indian.River,depth_min]` + post$b_depth_min < 0)
 
-### max size ----
-mean(post$`r_estuary[Northeast.Florida,tl_max]` + post$b_tl_max < 0)
-mean(post$`r_estuary[Southern.Indian.River,tl_max]` + post$b_tl_max < 0)
-mean(post$`r_estuary[Apalachicola.Bay,tl_max]` + post$b_tl_max < 0)
-mean(post$`r_estuary[Tampa.Bay,tl_max]` + post$b_tl_max < 0)
-mean(post$`r_estuary[Charlotte.Harbor,tl_max]` + post$b_tl_max < 0)
-mean(post$`r_estuary[Cedar.Key,tl_max]` + post$b_tl_max < 0)
-mean(post$`r_estuary[Northern.Indian.River,tl_max]` + post$b_tl_max < 0)
-
-### species synchrony ----
-mean(post$`r_estuary[Northeast.Florida,species_synchrony]` + post$b_species_synchrony < 0)
-mean(post$`r_estuary[Southern.Indian.River,species_synchrony]` + post$b_species_synchrony < 0)
-mean(post$`r_estuary[Apalachicola.Bay,species_synchrony]` + post$b_species_synchrony < 0)
-mean(post$`r_estuary[Tampa.Bay,species_synchrony]` + post$b_species_synchrony < 0)
-mean(post$`r_estuary[Charlotte.Harbor,species_synchrony]` + post$b_species_synchrony < 0)
-mean(post$`r_estuary[Cedar.Key,species_synchrony]` + post$b_species_synchrony < 0)
-mean(post$`r_estuary[Northern.Indian.River,species_synchrony]` + post$b_species_synchrony < 0)
+### species turnover ----
+mean(post$`r_estuary[Northeast.Florida,species_turnover]` + post$b_species_turnover < 0)
+mean(post$`r_estuary[Southern.Indian.River,species_turnover]` + post$b_species_turnover < 0)
+mean(post$`r_estuary[Apalachicola.Bay,species_turnover]` + post$b_species_turnover < 0)
+mean(post$`r_estuary[Tampa.Bay,species_turnover]` + post$b_species_turnover < 0)
+mean(post$`r_estuary[Charlotte.Harbor,species_turnover]` + post$b_species_turnover < 0)
+mean(post$`r_estuary[Cedar.Key,species_turnover]` + post$b_species_turnover < 0)
+mean(post$`r_estuary[Northern.Indian.River,species_turnover]` + post$b_species_turnover < 0)
 
 # generation time visualizations ------------------------------------------
 
@@ -136,7 +128,7 @@ df_eq = bind_rows(re_beta, fe_beta) |>
 
 dat <- read_csv('local-data/key-datasets/stability_foragefish_final.csv') |> 
       select(estuary,
-             value = gen_time_mean) |>
+             value = raw_gen_time_mean) |>
       distinct() |> 
       group_by(estuary) |> 
       mutate(scaled = scale(value)) |> 
@@ -150,7 +142,7 @@ dat_scaled = dat |>
 
 raw <- read_csv('local-data/key-datasets/stability_foragefish_final.csv') |> 
       select(estuary,
-             value = gen_time_mean,
+             value = raw_gen_time_mean,
              stab = biomass_stability)
 
 df <- dat_scaled |> 
@@ -208,7 +200,7 @@ b = df_beta |>
       geom_pointrange(aes(ymin = lower_2.5, ymax = upper_97.5), linewidth = 1, size = .9) +
       labs(y = 'Beta', x = 'Estuary')+
       scale_color_manual(values = estuary_palette_abb) +
-      scale_y_continuous(breaks = c(-1.0, -0.5, 0.0, 0.5, 1.0, 1.5), limits = c(-1.0, 1.52)) +
+      scale_y_continuous(breaks = c(-0.5, 0.0, 0.5), limits = c(-0.68, 0.68)) +
       coord_flip()+
       theme_classic()+
       theme(axis.text.x = element_text(face = "bold", color = "black", size = 12),
@@ -227,12 +219,12 @@ ggpubr::ggarrange(a,b, align = 'h')
 ### clean environment ----
 rm(list = setdiff(ls(), c("a", "b", 'mod', 'est', 'estuary_palette', 'est_abb', 'estuary_palette_abb')))
 
-# species evenness visualizations -----------------------------------------
+# species turnover visualizations -----------------------------------------
 # random effects
 re95 = mixedup::extract_random_coefs(mod, ci_level = c(0.95)) |> 
-      filter(effect %in% c('Intercept', 'species_evenness'))
+      filter(effect %in% c('Intercept', 'species_turnover'))
 re80 = mixedup::extract_random_coefs(mod, ci_level = c(0.8)) |> 
-      filter(effect %in% c('Intercept', 'species_evenness'))
+      filter(effect %in% c('Intercept', 'species_turnover'))
 
 re_beta = left_join(re95, re80) |> 
       rename(term = effect,
@@ -240,10 +232,10 @@ re_beta = left_join(re95, re80) |>
 
 # fixed effects
 fe95 = mixedup::extract_fixed_effects(mod, ci_level = c(0.95)) |> 
-      filter(term %in% c('Intercept', 'species_evenness'))
+      filter(term %in% c('Intercept', 'species_turnover'))
 
 fe80 = mixedup::extract_fixed_effects(mod, ci_level = c(0.8)) |> 
-      filter(term %in% c('Intercept', 'species_evenness'))
+      filter(term %in% c('Intercept', 'species_turnover'))
 
 fe_beta = left_join(fe95, fe80) |> 
       mutate(estuary = 'Overall') 
@@ -266,7 +258,7 @@ df_beta = bind_rows(re_beta, fe_beta) |>
 df_eq = bind_rows(re_beta, fe_beta) |> 
       select(term, estuary, value) |> 
       pivot_wider(names_from = term, values_from = value)  |> 
-      rename(beta = species_evenness) |> 
+      rename(beta = species_turnover) |> 
       mutate(estuary = case_when(
             estuary == "Northeast.Florida" ~ "Northeast Florida",
             estuary == "Southern.Indian.River" ~ "Southern Indian River",
@@ -280,7 +272,7 @@ df_eq = bind_rows(re_beta, fe_beta) |>
 
 dat <- read_csv('local-data/key-datasets/stability_foragefish_final.csv') |> 
       select(estuary,
-             value = species_evenness_mean) |>
+             value = biomass_turnover) |>
       distinct() |> 
       group_by(estuary) |> 
       mutate(scaled = scale(value)) |> 
@@ -294,7 +286,7 @@ dat_scaled = dat |>
 
 raw <- read_csv('local-data/key-datasets/stability_foragefish_final.csv') |> 
       select(estuary,
-             value = species_evenness_mean,
+             value = biomass_turnover,
              stab = biomass_stability) 
 
 df <- dat_scaled |> 
@@ -309,7 +301,7 @@ c = df |>
       geom_point(data = raw, aes(value, stab, color = estuary), size = 2) +
       geom_line(linewidth = 1.75) +
       scale_color_manual(values = estuary_palette) +
-      labs(y = 'Biomass Stability', title = 'Species Evenness', x = NULL)+
+      labs(y = 'Biomass Stability', title = 'Species Turnover', x = NULL)+
       theme_classic()+
       theme(axis.text.x = element_text(face = "bold", color = "black", size = 12),
             axis.text.y = element_text(face = "bold", color = "black", size = 12),
@@ -352,7 +344,7 @@ d = df_beta |>
       geom_pointrange(aes(ymin = lower_2.5, ymax = upper_97.5), linewidth = 1, size = .9) +
       labs(y = 'Beta', x = 'Estuary')+
       scale_color_manual(values = estuary_palette_abb) +
-      scale_y_continuous(breaks = c(-1.0, -0.5, 0.0, 0.5, 1.0, 1.5), limits = c(-1.0, 1.52)) +
+      scale_y_continuous(breaks = c(-0.5, 0.0, 0.5), limits = c(-0.68, 0.68)) +
       coord_flip()+
       theme_classic()+
       theme(axis.text.x = element_text(face = "bold", color = "black", size = 12),
@@ -371,13 +363,13 @@ ggpubr::ggarrange(c,d, align = 'h')
 ### clean environment ----
 rm(list = setdiff(ls(), c("a", "b", "c", "d", 'mod', 'est', 'estuary_palette', 'est_abb', 'estuary_palette_abb')))
 
-# mean max size visualizations ------------------------------------------
+# max depth visualizations ------------------------------------------
 
 # random effects
 re95 = mixedup::extract_random_coefs(mod, ci_level = c(0.95)) |> 
-      filter(effect %in% c('Intercept', 'tl_max'))
+      filter(effect %in% c('Intercept', 'depth_max'))
 re80 = mixedup::extract_random_coefs(mod, ci_level = c(0.8)) |> 
-      filter(effect %in% c('Intercept', 'tl_max'))
+      filter(effect %in% c('Intercept', 'depth_max'))
 
 re_beta = left_join(re95, re80) |> 
       rename(term = effect,
@@ -385,10 +377,10 @@ re_beta = left_join(re95, re80) |>
 
 # fixed effects
 fe95 = mixedup::extract_fixed_effects(mod, ci_level = c(0.95)) |> 
-      filter(term %in% c('Intercept', 'tl_max'))
+      filter(term %in% c('Intercept', 'depth_max'))
 
 fe80 = mixedup::extract_fixed_effects(mod, ci_level = c(0.8)) |> 
-      filter(term %in% c('Intercept', 'tl_max'))
+      filter(term %in% c('Intercept', 'depth_max'))
 
 fe_beta = left_join(fe95, fe80) |> 
       mutate(estuary = 'Overall') 
@@ -411,7 +403,7 @@ df_beta = bind_rows(re_beta, fe_beta) |>
 df_eq = bind_rows(re_beta, fe_beta) |> 
       select(term, estuary, value) |> 
       pivot_wider(names_from = term, values_from = value)  |> 
-      rename(beta = tl_max) |> 
+      rename(beta = depth_max) |> 
       mutate(estuary = case_when(
             estuary == "Northeast.Florida" ~ "Northeast Florida",
             estuary == "Southern.Indian.River" ~ "Southern Indian River",
@@ -425,7 +417,7 @@ df_eq = bind_rows(re_beta, fe_beta) |>
 
 dat <- read_csv('local-data/key-datasets/stability_foragefish_final.csv') |> 
       select(estuary,
-             value = tl_max_mean) |>
+             value = raw_depth_max_mean) |>
       distinct() |> 
       group_by(estuary) |> 
       mutate(scaled = scale(value)) |> 
@@ -439,7 +431,7 @@ dat_scaled = dat |>
 
 raw <- read_csv('local-data/key-datasets/stability_foragefish_final.csv') |> 
       select(estuary,
-             value = tl_max_mean,
+             value = raw_depth_max_mean,
              stab = biomass_stability) 
 
 df <- dat_scaled |> 
@@ -454,7 +446,7 @@ e = df |>
       geom_point(data = raw, aes(value, stab, color = estuary), size = 2) +
       geom_line(linewidth = 1.75) +
       scale_color_manual(values = estuary_palette) +
-      labs(y = 'Biomass Stability', title = 'Mean Max Size', x = NULL)+
+      labs(y = 'Biomass Stability', title = 'Mean Max Depth', x = NULL)+
       theme_classic()+
       theme(axis.text.x = element_text(face = "bold", color = "black", size = 12),
             axis.text.y = element_text(face = "bold", color = "black", size = 12),
@@ -497,7 +489,7 @@ f = df_beta |>
       geom_pointrange(aes(ymin = lower_2.5, ymax = upper_97.5), linewidth = 1, size = .9) +
       labs(y = 'Beta', x = 'Estuary')+
       scale_color_manual(values = estuary_palette_abb) +
-      scale_y_continuous(breaks = c(-1.0, -0.5, 0.0, 0.5, 1.0, 1.5), limits = c(-1.0, 1.52)) +
+      scale_y_continuous(breaks = c(-0.5, 0.0, 0.5), limits = c(-0.68, 0.68)) +
       coord_flip()+
       theme_classic()+
       theme(axis.text.x = element_text(face = "bold", color = "black", size = 12),
@@ -642,7 +634,7 @@ h = df_beta |>
       geom_pointrange(aes(ymin = lower_2.5, ymax = upper_97.5), linewidth = 1, size = .9) +
       labs(y = 'Beta', x = 'Estuary')+
       scale_color_manual(values = estuary_palette_abb) +
-      scale_y_continuous(breaks = c(-1.0, -0.5, 0.0, 0.5, 1.0, 1.5), limits = c(-1.0, 1.52)) +
+      scale_y_continuous(breaks = c(-0.5, 0.0, 0.5), limits = c(-0.68, 0.68)) +
       coord_flip()+
       theme_classic()+
       theme(axis.text.x = element_text(face = "bold", color = "black", size = 12),
@@ -661,8 +653,8 @@ ggpubr::ggarrange(g,h, align = 'h')
 ### clean environment ----
 rm(list = setdiff(ls(), c("a", "b", "c", "d", "e", "f", "g", "h", 'mod', 'est', 'estuary_palette', 'est_abb', 'estuary_palette_abb')))
 
-top <- a + c + e + g + plot_layout(nrow = 1, guides = "collect") & theme(legend.position = "none")
-bot <- b + d + f + h + plot_layout(nrow = 1, guides = "collect") & theme(legend.position = "none")
+top <- g + a + e + c + plot_layout(nrow = 1, guides = "collect") & theme(legend.position = "none")
+bot <- h + b + f + d + plot_layout(nrow = 1, guides = "collect") & theme(legend.position = "none")
 
 final_plot <- top / bot + plot_layout(heights = c(1, 1))
 final_plot
@@ -671,21 +663,21 @@ final_plot
 # and b, d, f, h are bottom-row plots
 
 # Remove redundant axis titles
-a <- a + labs(y = NULL) + labs(tag = "a") + theme(plot.tag = element_text(size = 14, face = "bold"),
-                                                  plot.tag.position = c(0.02, 1))
+a <- a + labs(y = NULL) 
 c <- c + labs(y = NULL)
 e <- e + labs(y = NULL)
-g <- g + labs(y = NULL)
+g <- g + labs(y = NULL) + labs(tag = "a") + theme(plot.tag = element_text(size = 14, face = "bold"),
+                                                  plot.tag.position = c(0.02, 1))
 
-b <- b + labs(y = NULL, x = NULL) + labs(tag = "b") + theme(plot.tag = element_text(size = 14, face = "bold"),
-                                                            plot.tag.position = c(0.02, 1))
+b <- b + labs(y = NULL, x = NULL) 
 d <- d + labs(y = NULL, x = NULL)
 f <- f + labs(y = NULL, x = NULL)
-h <- h + labs(y = NULL, x = NULL)
+h <- h + labs(y = NULL, x = NULL) + labs(tag = "b") + theme(plot.tag = element_text(size = 14, face = "bold"),
+                                                            plot.tag.position = c(0.02, 1))
 
 # Create row layouts
-top_row <- a + c + e + g + plot_layout(nrow = 1) 
-bot_row <- b + d + f + h + plot_layout(nrow = 1)
+top_row <- g + a + e + c + plot_layout(nrow = 1, guides = "collect") & theme(legend.position = "none")
+bot_row <- h + b + f + d + plot_layout(nrow = 1, guides = "collect") & theme(legend.position = "none")
 
 # Combine with a shared y-axis and x-axis annotation
 final_plot <- (top_row / bot_row) +
@@ -729,6 +721,12 @@ grid::grid.draw(
             patchwork::inset_element(
                   grid::textGrob("Estuary", rot = 90, gp = gpar(fontsize = 14, fontface = "bold")),
                   left = 0, bottom = 0.05, right = 0.019, top = 0.45, align_to = "full"
+            ) +
+            
+            # Add R2 and Marginal R2 at bottom center
+            patchwork::inset_element(
+                  grid::textGrob("R² = 0.25; Marginal R² = 0.11", gp = gpar(fontsize = 12, fontface = "italic")),
+                  left = 0.75, bottom = 0.98, right = 1.00, top = 1.00, align_to = "full"
             )
 )
 

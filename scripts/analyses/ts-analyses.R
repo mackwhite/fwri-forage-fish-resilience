@@ -1003,22 +1003,6 @@ coords <- read_rds('local-data/key-datasets/forage_fish_master.RDS') |>
 
 lat_grad <- trend_plot_df |> left_join(coords)
 glimpse(lat_grad)
-lat_grad_bm <- lat_grad |> filter(variable_pretty == "Biomass")
-glimpse(lat_grad_bm)
-
-### effects of latitude on biomass trends ----
-m3 <- lm(slope ~ lat, data = lat_grad_bm)
-summary(m3)
-lat_grad_bm |> 
-      ggplot(aes(x=lat,y=slope)) +
-      geom_point(aes(color = bay), size = 3) +
-      ### dynamic biogeographic break at ~28 N (Gilmore 1995, Troast et al. 2020)
-      geom_vline(xintercept = 28) +
-      geom_smooth(method = "lm", se = FALSE, color = "black")
-
-### effects of latitude on generation time trends ----
-lat_grad <- trend_plot_df |> left_join(coords)
-glimpse(lat_grad)
 lat_grad_bm <- lat_grad |> filter(variable_pretty == "Generation Time")
 glimpse(lat_grad_bm)
 
@@ -1026,6 +1010,78 @@ m3 <- lm(slope ~ lat, data = lat_grad_bm)
 summary(m3)
 lat_grad_bm |> 
       ggplot(aes(x=lat,y=slope)) +
+      geom_vline(xintercept = 28, linetype = "dashed") +
+      geom_hline(yintercept = 0, linetype = "solid") +
       geom_point(aes(color = bay), size = 3) +
-      # geom_vline(xintercept = 28) +
-      geom_smooth(method = "lm", se = FALSE, color = "black")
+      geom_smooth(method = "lm", se = TRUE, color = "black") +
+      annotate("text", x = 28.85, y = 3.4, label = "~biogegraphic transition zone",
+               size = 2.7, fontface = "bold") +
+      annotate("text", x = 28.9, y = 3.15, label = bquote(italic(Gilmore~1995) * ", " * italic(Troast~et~al.~2020)),
+               size = 2.7, fontface = "bold") +
+      annotate('text', 
+               x = 30.3, y = 3.5,
+               label = bquote({R^2} == 0.23),
+               size = 4, fontface = 'bold') +
+      annotate('text', 
+               x = 30.3, y = 3.05,
+               label = bquote(italic(p) <0.001),
+               size = 4, fontface = 'bold') +
+      scale_color_manual(values = estuary_palette_abb) +
+      labs(x = 'Latitude', y = 'Temporal Trend', color = "Estuary", title = "Generation Time") +
+      theme(axis.text = element_text(size = 10, face = "bold", colour = "black"),
+            axis.title = element_text(size = 12, face = "bold", colour = "black"),
+            plot.title = element_text(size = 14, face = "bold", colour = "black", hjust = 0.5),
+            panel.grid.major = element_blank(),
+            axis.line = element_line(colour = "black"),
+            panel.grid.minor = element_blank(),
+            panel.border = element_blank(),
+            panel.background = element_blank(),
+            legend.position = 'none',       
+            legend.text = element_text(face = 'bold', size = 6),
+            legend.title = element_text(face = 'bold'), size = 6,
+            plot.margin = margin(5.5, 5.5, 5.5, 5.5))
+
+ggsave('figs/generationtime-latitude-gradient-regression.png',
+       dpi = 600, units= 'in', height = 5, width = 5)
+
+lat_grad <- trend_plot_df |> left_join(coords)
+glimpse(lat_grad)
+lat_grad_bm <- lat_grad |> filter(variable_pretty == "Biomass")
+glimpse(lat_grad_bm)
+
+m3 <- lm(slope ~ lat, data = lat_grad_bm)
+summary(m3)
+lat_grad_bm |> 
+      ggplot(aes(x=lat,y=slope)) +
+      geom_vline(xintercept = 28, linetype = "dashed") +
+      geom_hline(yintercept = 0, linetype = "solid") +
+      geom_point(aes(color = bay), size = 3) +
+      geom_smooth(method = "lm", se = TRUE, color = "black") +
+      annotate("text", x = 28.6, y = 4.3, label = "~biogegraphic transition zone",
+               size = 2.2, fontface = "bold") +
+      annotate("text", x = 28.6, y = 4.0, label = bquote(italic(Gilmore~1995) * ", " * italic(Troast~et~al.~2020)),
+               size = 2.0, fontface = "bold") +
+      annotate('text', 
+               x = 30.3, y = 4.4,
+               label = bquote({R^2} == 0.19),
+               size = 4, fontface = 'bold') +
+      annotate('text', 
+               x = 30.35, y = 3.85,
+               label = bquote(italic(p) <0.01),
+               size = 4, fontface = 'bold') +
+      scale_color_manual(values = estuary_palette_abb) +
+      labs(x = 'Latitude', y = 'Temporal Trend', color = "Estuary", title = "Biomass") +
+      theme(axis.text = element_text(size = 10, face = "bold", colour = "black"),
+            axis.title = element_text(size = 12, face = "bold", colour = "black"),
+            plot.title = element_text(size = 14, face = "bold", colour = "black", hjust = 0.5),
+            panel.grid.major = element_blank(),
+            axis.line = element_line(colour = "black"),
+            panel.grid.minor = element_blank(),
+            panel.border = element_blank(),
+            panel.background = element_blank(),
+            legend.position = 'none',       
+            legend.text = element_text(face = 'bold', size = 6),
+            legend.title = element_text(face = 'bold'), size = 6)
+
+ggsave('figs/biomass-latitude-gradient-regression.png',
+       dpi = 600, units= 'in', height = 4, width = 6)
