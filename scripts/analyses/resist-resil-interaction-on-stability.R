@@ -43,7 +43,7 @@ est_abb <- c('AP', 'CK', 'TB', 'CH', 'SIR', 'NIR', 'JX')
 ### load necessary libraries ---
 # install.packages("librarian")
 librarian::shelf(tidyverse, readr, zoo, MuMIn, corrplot, mgcv, performance, ggeffects,
-                 ggpubr, parameters, ggstats, brms, mixedup, multcompView, FSA, grid, patchwork)
+                 ggpubr, parameters, ggstats, brms, mixedup, multcompView, FSA, grid, patchwork, ggcorrplot)
 
 ### read in stability dataset ----
 dat <- read_csv('local-data/key-datasets/stability_foragefish_final.csv') |> 
@@ -523,20 +523,29 @@ e
 
 
 # Remove redundant axis titles
-a <- a + labs(tag = "a") + theme(plot.tag = element_text(size = 14, face = "bold"),
+a <- a + labs(tag = "d") + theme(plot.tag = element_text(size = 14, face = "bold"),
                                                   plot.tag.position = c(0.02, 1))
 
-b <- b + labs(tag = "b") + theme(plot.tag = element_text(size = 14, face = "bold"),
+b <- b + labs(tag = "e") + theme(plot.tag = element_text(size = 14, face = "bold"),
                                                             plot.tag.position = c(0.02, 1))
 
-top <- a + b + plot_layout(nrow = 1, guides = "collect") & theme(legend.position = "none",
+c <- c + labs(tag = "a") + theme(plot.tag = element_text(size = 14, face = "bold"),
+                                 plot.tag.position = c(0.02, 1))
+
+d <- d + labs(tag = "b") + theme(plot.tag = element_text(size = 14, face = "bold"),
+                                 plot.tag.position = c(0.02, 1))
+
+e <- e + labs(tag = "c") + theme(plot.tag = element_text(size = 14, face = "bold"),
+                                 plot.tag.position = c(0.02, 1))
+
+bot <- a + b + plot_layout(nrow = 1, guides = "collect") & theme(legend.position = "none",
                                                                  plot.margin = margin(10, 10, 10, 10))
 
-bot <- c + d + e + plot_layout(nrow = 1, guides = "collect") & theme(legend.position = "none",
+top <- c + d + e + plot_layout(nrow = 1, guides = "collect") & theme(legend.position = "none",
                                                                      plot.margin = margin(10, 10, 10, 10))
 
 final_plot <- top / bot +
-      plot_layout(heights = c(0.65, 0.35)) 
+      plot_layout(heights = c(0.35, 0.65)) 
       
 final_plot
 # r2(mod)
@@ -548,9 +557,149 @@ grid::grid.draw(
             # Add R2 and Marginal R2 at bottom center
             patchwork::inset_element(
                   grid::textGrob("R² = 0.52; Marginal R² = 0.14", gp = gpar(fontsize = 12, fontface = "italic")),
-                  left = 0.25, bottom = 0.99, right = 0.75, top = 1.00, align_to = "full"
+                  left = 0.25, bottom = 0.00, right = 0.75, top = 0.01, align_to = "full"
             )
 )
 
 ggsave('figs/resist-resilience-five-panel.png',
        dpi = 600, units= 'in', height = 7, width = 9)
+
+df <- dat |> 
+      group_by(estuary, bay, zone) |> 
+      summarize(xsr = mean(raw_species_richness_mean),
+             xse = mean(raw_species_evenness_mean),
+             xgt = mean(raw_gen_time_mean),
+             xmd = mean(raw_depth_max_mean),
+             y = mean(biomass_synchrony),
+             yresist = mean(resistance),
+             yresil = mean(resilience),
+             .groups = 'drop') 
+df |> 
+      ggplot(aes(x = xse, y = y)) +
+      geom_point(aes(color = estuary))
+
+m<-lm(y ~ xse, dat = df)
+summary(m)
+
+m<-lm(biomass_synchrony ~ raw_species_evenness_mean, dat = dat)
+summary(m)
+
+dat |> 
+      mutate(bay = case_when(
+            bay == 'TQ' ~ "SIR",
+            bay == 'IR' ~ 'NIR',
+            TRUE ~ bay
+      )) |> 
+      ggplot(aes(x = raw_species_evenness_mean, y = biomass_synchrony)) +
+      geom_jitter(aes(color = bay), alpha = 1, size = 3) +
+      geom_smooth(method = "lm", se = TRUE, color = "black") +
+      scale_fill_manual(values = estuary_palette_abb) +
+      scale_color_manual(values = estuary_palette_abb) +
+      labs(y = 'Species Synchrony', x = 'Species Evenness', fill = 'Estuary',
+           color = 'Estuary', title = NULL) +
+      annotate('text',
+               x = 1.3, y = 0.46,
+               label = bquote({R^2} == 0.22),
+               size = 5) +
+      annotate('text',
+               x = 1.29, y = 0.435,
+               label = bquote(italic(p) < 2 %*% 10^-16),
+               size = 5) +
+      theme_classic() +
+      theme(axis.text.x = element_text(face = "bold", color = "black", size = 12),
+            axis.text.y = element_text(face = "bold", color = "black", size = 12),
+            plot.title = element_text(face = "bold", color = "black", size = 14, hjust = 0.5),
+            axis.title.x = element_text(face = "bold", color = "black", size = 14),
+            axis.title.y = element_text(face = "bold", color = "black", size = 14),
+            strip.text = element_blank(),
+            strip.background = element_blank(),
+            legend.position = c(0.85, 0.61),
+            legend.text = element_text(face = "bold", color = "black", size = 12),
+            legend.title = element_text(face = "bold", color = "black", size = 12))
+
+ggsave('figs/synch-evenness-regression.png',
+       dpi = 600, units= 'in', height = 5, width = 5.3)
+
+m <-lm(yresist ~ xmd, dat = df)
+summary(m)
+
+m <-lm(resistance ~ raw_depth_max_mean, dat = dat)
+summary(m)
+
+df |> 
+      mutate(bay = case_when(
+            bay == 'TQ' ~ "SIR",
+            bay == 'IR' ~ 'NIR',
+            TRUE ~ bay
+      )) |> 
+      filter(xmd <= 70) |> 
+      ggplot(aes(x = xmd, y = y)) +
+      geom_jitter(aes(color = bay), alpha = 1, size = 3) +
+      geom_smooth(method = "lm", se = TRUE, color = "black") +
+      scale_fill_manual(values = estuary_palette_abb) +
+      scale_color_manual(values = estuary_palette_abb) +
+      labs(y = 'Resistance', x = 'Max Depth', fill = 'Estuary',
+           color = 'Estuary', title = NULL) +
+      annotate('text',
+               x = 35.3, y = 0.46,
+               label = bquote({R^2} == 0.15),
+               size = 5) +
+      annotate('text',
+               x = 36.6, y = 0.44,
+               label = bquote(italic(p) < 2 %*% 10^-16),
+               size = 5) +
+      theme_classic() +
+      theme(axis.text.x = element_text(face = "bold", color = "black", size = 12),
+            axis.text.y = element_text(face = "bold", color = "black", size = 12),
+            plot.title = element_text(face = "bold", color = "black", size = 14, hjust = 0.5),
+            axis.title.x = element_text(face = "bold", color = "black", size = 14),
+            axis.title.y = element_text(face = "bold", color = "black", size = 14),
+            strip.text = element_blank(),
+            strip.background = element_blank(),
+            legend.position = c(0.93, 0.25),
+            legend.text = element_text(face = "bold", color = "black", size = 12),
+            legend.title = element_text(face = "bold", color = "black", size = 12))
+
+ggsave('figs/maxdepth-resist-regression.png',
+       dpi = 600, units= 'in', height = 5, width = 5.3)
+
+
+m <-lm(yresist ~ xgt, dat = df)
+summary(m)
+
+df |> 
+      mutate(bay = case_when(
+            bay == 'TQ' ~ "SIR",
+            bay == 'IR' ~ 'NIR',
+            TRUE ~ bay
+      )) |> 
+      # filter(bay %in% c('SIR', 'TB', 'CH')) |> 
+      ggplot(aes(x = xgt, y = y)) +
+      geom_jitter(aes(color = bay), alpha = 1, size = 3) +
+      geom_smooth(method = "lm", se = TRUE, color = "black") +
+      scale_fill_manual(values = estuary_palette_abb) +
+      scale_color_manual(values = estuary_palette_abb) +
+      labs(y = 'Resistance', x = 'Generation Time', fill = 'Estuary',
+           color = 'Estuary', title = NULL) +
+      annotate('text',
+               x = 2.58, y = 0.46,
+               label = bquote({R^2} == 0.001),
+               size = 5) +
+      annotate('text',
+               x = 2.58, y = 0.44,
+               label = bquote(italic(p) == 0.33),
+               size = 5) +
+      theme_classic() +
+      theme(axis.text.x = element_text(face = "bold", color = "black", size = 12),
+            axis.text.y = element_text(face = "bold", color = "black", size = 12),
+            plot.title = element_text(face = "bold", color = "black", size = 14, hjust = 0.5),
+            axis.title.x = element_text(face = "bold", color = "black", size = 14),
+            axis.title.y = element_text(face = "bold", color = "black", size = 14),
+            strip.text = element_blank(),
+            strip.background = element_blank(),
+            legend.position = "right",
+            legend.text = element_text(face = "bold", color = "black", size = 12),
+            legend.title = element_text(face = "bold", color = "black", size = 12))
+
+ggsave('figs/generationtime-resist-regression.png',
+       dpi = 600, units= 'in', height = 5, width = 5.3)

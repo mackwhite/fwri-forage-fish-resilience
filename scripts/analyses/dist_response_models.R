@@ -95,7 +95,7 @@ a <- resist_df |>
             event == 'mhw' ~ 'Heat Wave'
       )) |> 
       ggplot(aes(x = event, y = value, group = event)) + 
-      geom_boxplot(aes(fill = event), outlier.shape = NA, alpha = 0.8) +
+      geom_boxplot(aes(fill = event), outlier.shape = NA, alpha = 1) +
       geom_jitter(color = "black", alpha = 0.3, size = 1) +
       theme_minimal(base_size = 14) +
       theme_bw() +
@@ -158,7 +158,7 @@ ymax_vals <- resil_df |>
 
 letter_df <- data.frame(
       event = c('Cold Snap', 'Heat Wave', 'Hurricane'),
-      letter = c('a', 'a', 'b')
+      letter = c('a', 'b', 'a')
 ) |> 
       left_join(ymax_vals)
 
@@ -170,7 +170,7 @@ b <- resil_df |>
             event == 'mhw' ~ 'Heat Wave'
       )) |> 
       ggplot(aes(x = event, y = value, group = event)) + 
-      geom_boxplot(aes(fill = event), outlier.shape = NA, alpha = 0.8) +
+      geom_boxplot(aes(fill = event), outlier.shape = NA, alpha = 1) +
       geom_jitter(color = "black", alpha = 0.3, size = 1) +
       theme_minimal(base_size = 14) +
       theme_bw() +
@@ -178,7 +178,7 @@ b <- resil_df |>
       geom_text(data = letter_df, aes(x = event, y = ymax + 0.3, label = letter),
                 inherit.aes = FALSE, fontface = "bold", size = 4) +
       scale_fill_manual(values = disturbance_palette) +
-      scale_y_continuous(breaks = c(-4,-2,0,2,4,6), limits = c(-4,6.5)) +
+      # scale_y_continuous(breaks = c(-4,-2,0,2,4,6), limits = c(-4,6.5)) +
       theme(
             strip.text = element_text(size = 16, face = "bold", colour = "black"),
             strip.background = element_blank(),  
@@ -280,8 +280,8 @@ c <- resist_df |>
       ),
       bay = factor(bay, levels = est_abb)) |> 
       ggplot(aes(x = bay, y = value, group = bay)) + 
-      geom_boxplot(aes(fill = bay), outlier.shape = NA, alpha = 0.8) +
-      geom_jitter(aes(color = event), alpha = 0.6, size = 1) +
+      geom_boxplot(aes(fill = bay), outlier.shape = NA, alpha = 1) +
+      geom_jitter(aes(color = event), alpha = 0.3, size = 1) +
       theme_minimal(base_size = 14) +
       theme_bw() +
       labs(x = NULL, y = NULL, fill = "Estuary", color = "Disturbance", title = "Resistance") + 
@@ -391,8 +391,8 @@ d <- resil_df |>
       ),
       bay = factor(bay, levels = est_abb)) |> 
       ggplot(aes(x = bay, y = value, group = bay)) + 
-      geom_boxplot(aes(fill = bay), outlier.shape = NA, alpha = 0.8) +
-      geom_jitter(aes(color = event), alpha = 0.6, size = 1) +
+      geom_boxplot(aes(fill = bay), outlier.shape = NA, alpha = 1) +
+      geom_jitter(aes(color = event), alpha = 0.3, size = 1) +
       theme_minimal(base_size = 14) +
       theme_bw() +
       labs(x = NULL, y = NULL, fill = "Estuary", color = "Disturbance", title = "Resilience") + 
@@ -449,5 +449,5 @@ grid::grid.draw(
                   left = 0.0, bottom = 0.25, right = 0.019, top = 0.75, align_to = 'full')
 )
 
-# ggsave('figs/resistance-resilience-fourpanel.png',
-#        dpi = 600, units= 'in', height = 10, width = 10)
+ggsave('figs/resistance-resilience-fourpanel.png',
+       dpi = 600, units= 'in', height = 10, width = 10)
